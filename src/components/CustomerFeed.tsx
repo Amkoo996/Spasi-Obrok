@@ -57,7 +57,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
       {/* FEED */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
         <div className="flex items-baseline justify-between mb-2 md:col-span-2">
-          <h2 className="text-2xl font-bold text-[#1a1c18]">🔥 Deals near you</h2>
+          <h2 className="text-2xl font-bold text-[#1a1c18]">🔥 Ponude blizu vas</h2>
         </div>
         
         {filteredOffers.map(offer => (
@@ -85,10 +85,15 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
             </div>
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-[#1a1c18] leading-tight">{offer.title}</h3>
+                <div>
+                  <h3 className="text-lg font-bold text-[#1a1c18] leading-tight">{offer.title}</h3>
+                  {offer.quantity > 0 && offer.quantity <= 2 && (
+                    <div className="text-[10px] font-bold text-red-500 uppercase mt-1">⚡ Rasprodaje se brzo</div>
+                  )}
+                </div>
                 {offer.quantity > 0 && offer.quantity <= 3 && (
-                  <span className="text-xs font-semibold text-[#b45309] bg-[#fef3c7] px-2 py-1 rounded-lg shrink-0">
-                    Only {offer.quantity} left
+                  <span className="text-xs font-bold text-[#b45309] bg-[#fef3c7] px-2 py-1 rounded-lg shrink-0 shadow-sm border border-[#fef3c7]/50">
+                    🔥 Ostalo {offer.quantity} paketa!
                   </span>
                 )}
               </div>
@@ -99,7 +104,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
 
               <div className="flex items-end justify-between border-t border-[#f5f4ef] pt-4">
                 <div>
-                  <p className="text-xs text-[#6b7264] font-medium flex items-center gap-1"><Clock size={12}/> Pickup until {offer.pickupEnd}</p>
+                  <p className="text-xs text-[#b45309] font-bold flex items-center gap-1 bg-[#fef3c7]/20 px-2 py-0.5 rounded-md inline-flex mb-1"><Clock size={12}/> ⏰ Preuzimanje do {offer.pickupEnd}</p>
                   <p className="text-2xl font-black text-[#1a1c18] mt-1">
                     {offer.price} KM <span className="text-sm font-normal text-[#6b7264] line-through">~{offer.valueEstimate} KM</span>
                   </p>
@@ -109,7 +114,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                   className={`px-6 py-2.5 rounded-2xl text-sm font-bold shadow-sm transition-colors ${offer.quantity > 0 ? 'bg-[#4f6d44] text-white active:scale-95' : 'bg-[#d1cfc0] text-white'}`}
                   onClick={(e) => { e.stopPropagation(); setSelectedOffer(offer); }}
                 >
-                  {offer.quantity > 0 ? 'Reserve' : 'SOLD OUT'}
+                  {offer.quantity > 0 ? 'Rezerviši' : 'SOLD OUT'}
                 </button>
               </div>
             </div>
@@ -164,14 +169,14 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
 
               <div className="bg-white border border-[#eceae0] shadow-sm rounded-2xl p-5 mb-6">
                 <div className="flex items-center gap-2 text-[#1a1c18] font-semibold mb-1">
-                  <Clock size={18} className="text-[#4f6d44]" /> Pick up time
+                  <Clock size={18} className="text-[#4f6d44]" /> Vrijeme preuzimanja
                 </div>
-                <div className="text-[#6b7264]">Collect today before <strong className="text-[#1a1c18]">{selectedOffer.pickupEnd}</strong></div>
+                <div className="text-[#6b7264]">Preuzmite danas do <strong className="text-[#1a1c18]">{selectedOffer.pickupEnd}</strong></div>
               </div>
 
-              <h3 className="font-bold text-lg mb-2 text-[#1a1c18]">What you might get</h3>
+              <h3 className="font-bold text-lg mb-2 text-[#1a1c18]">Šta vas očekuje unutra?</h3>
               <p className="text-[#6b7264] leading-relaxed max-w-xl">
-                Food is unsold but fresh. Contents may vary depending on what hasn't sold during the day. Expected value of the food inside is around {selectedOffer.valueEstimate} KM.
+                Hrana je neprodana, ali potpuno svježa. Sadržaj iznenađenja može varirati zavisno od dnevne ponude (šta taj dan nije prodato), no vrijednost hrane unutra prelazi iznos koji plaćate (~{selectedOffer.valueEstimate} KM).
               </p>
             </div>
 
@@ -181,7 +186,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                 onClick={handleReserveClick}
                 className="w-full max-w-md bg-[#4f6d44] hover:bg-[#3d5434] disabled:bg-[#d1cfc0] text-white font-bold text-lg py-4 rounded-[20px] shadow-sm transition-colors flex items-center justify-center gap-2"
               >
-                {selectedOffer.quantity === 0 ? 'SOLD OUT' : 'Reserve'}
+                {selectedOffer.quantity === 0 ? 'SOLD OUT' : 'Rezerviši paket'}
               </button>
             </div>
           </motion.div>
@@ -208,18 +213,25 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                <div className="text-3xl font-black text-[#4f6d44] text-center tracking-widest">{successOrder.id}</div>
              </div>
 
+             <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-6 flex items-start gap-2">
+               <span className="text-red-500 font-bold text-lg leading-none">!</span>
+               <p className="text-xs text-red-800 font-semibold leading-snug">
+                 Tvoj kod: {successOrder.id}. Pokaži ga u radnji na kasi. Bez koda nema preuzimanja!
+               </p>
+             </div>
+
              <div className="space-y-4">
                <div className="flex items-start gap-3">
                  <div className="w-6 h-6 bg-[#4f6d44] text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
-                 <p className="text-xs leading-relaxed">Idite na lokaciju <strong>{selectedOffer.location}</strong> prije {selectedOffer.pickupEnd}h.</p>
+                 <p className="text-xs leading-relaxed">Otiđite na lokaciju <strong>{selectedOffer.location}</strong> najkasnije do {selectedOffer.pickupEnd}h.</p>
                </div>
                <div className="flex items-start gap-3">
                  <div className="w-6 h-6 bg-[#4f6d44] text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                 <p className="text-xs leading-relaxed">Pokažite <strong>kod {successOrder.id}</strong> uposleniku.</p>
+                 <p className="text-xs leading-relaxed">Pokaži ovaj kod (<strong>{successOrder.id}</strong>) uposleniku.</p>
                </div>
                <div className="flex items-start gap-3">
                  <div className="w-6 h-6 bg-[#4f6d44] text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
-                 <p className="text-xs leading-relaxed">Platite <strong>{selectedOffer.price} KM</strong> direktno u objektu.</p>
+                 <p className="text-xs leading-relaxed">Platite <strong>{selectedOffer.price} KM</strong> pri preuzimanju.</p>
                </div>
              </div>
 
