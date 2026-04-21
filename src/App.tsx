@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Store, User, Utensils } from 'lucide-react';
 import { Offer, Order, OrderStatus } from './types';
 import CustomerFeed from './components/CustomerFeed';
@@ -16,7 +16,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '20:00',
     noPork: true,
     vegan: false,
-    imageSeed: 'bakery',
+    category: 'bakery'
   },
   {
     id: 'o-2',
@@ -29,7 +29,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '18:30',
     noPork: true,
     vegan: true,
-    imageSeed: 'salad',
+    category: 'restaurant'
   },
   {
     id: 'o-3',
@@ -42,7 +42,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '21:30',
     noPork: true,
     vegan: false,
-    imageSeed: 'cake',
+    category: 'bakery'
   },
   {
     id: 'o-4',
@@ -55,7 +55,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '19:00',
     noPork: true,
     vegan: true,
-    imageSeed: 'vegetables',
+    category: 'grocery'
   },
   {
     id: 'o-5',
@@ -68,7 +68,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '22:00',
     noPork: false,
     vegan: false,
-    imageSeed: 'burger',
+    category: 'fast_food'
   },
   {
     id: 'o-6',
@@ -81,7 +81,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '20:30',
     noPork: true,
     vegan: false,
-    imageSeed: 'croissant',
+    category: 'bakery'
   },
   {
     id: 'o-7',
@@ -94,7 +94,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '21:00',
     noPork: true,
     vegan: false,
-    imageSeed: 'noodles',
+    category: 'restaurant'
   },
   {
     id: 'o-8',
@@ -107,7 +107,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '23:00',
     noPork: false,
     vegan: false,
-    imageSeed: 'pizza',
+    category: 'fast_food'
   },
   {
     id: 'o-9',
@@ -120,7 +120,7 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '17:00',
     noPork: false,
     vegan: false,
-    imageSeed: 'sandwich',
+    category: 'fast_food'
   },
   {
     id: 'o-10',
@@ -133,15 +133,40 @@ const INITIAL_OFFERS: Offer[] = [
     pickupEnd: '19:30',
     noPork: true,
     vegan: true,
-    imageSeed: 'healthy',
+    category: 'restaurant'
   }
 ];
 
 export default function App() {
   const [view, setView] = useState<'customer' | 'partner'>('customer');
-  const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [orderCounter, setOrderCounter] = useState(1);
+  
+  const [offers, setOffers] = useState<Offer[]>(() => {
+    const saved = localStorage.getItem('offers');
+    return saved ? JSON.parse(saved) : INITIAL_OFFERS;
+  });
+  
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const saved = localStorage.getItem('orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [orderCounter, setOrderCounter] = useState(() => {
+    const saved = localStorage.getItem('orderCounter');
+    return saved ? Number(saved) : 1;
+  });
+
+  // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('offers', JSON.stringify(offers));
+  }, [offers]);
+
+  useEffect(() => {
+    localStorage.setItem('orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('orderCounter', orderCounter.toString());
+  }, [orderCounter]);
 
   const handleReserve = (offerId: string) => {
     const offerIndex = offers.findIndex(o => o.id === offerId);

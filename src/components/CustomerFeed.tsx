@@ -14,6 +14,19 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
 
+  const [isVerified, setIsVerified] = useState(localStorage.getItem('phoneVerified') === 'true');
+  const [verifying, setVerifying] = useState<'none' | 'phone' | 'code'>('none');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [authCode, setAuthCode] = useState('');
+  const [inputCode, setInputCode] = useState('');
+
+  const IMAGE_MAP: Record<string, string> = {
+    bakery: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80",
+    fast_food: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
+    grocery: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
+    restaurant: "https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=800&q=80"
+  };
+
   const filteredOffers = offers.filter(o => {
     if (filterNoPork && !o.noPork) return false;
     if (filterVegan && !o.vegan) return false;
@@ -21,6 +34,17 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
   });
 
   const handleReserveClick = () => {
+    if (!selectedOffer || selectedOffer.quantity === 0) return;
+    
+    if (!isVerified) {
+      setVerifying('phone');
+      return;
+    }
+    
+    executeReservation();
+  };
+
+  const executeReservation = () => {
     if (!selectedOffer) return;
     const order = onReserve(selectedOffer.id);
     if (order) {
@@ -68,7 +92,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
           >
             <div className="relative h-40">
               <img 
-                src={`https://picsum.photos/seed/${offer.imageSeed}/400/200?blur=1`} 
+                src={IMAGE_MAP[offer.category || 'restaurant']} 
                 alt={offer.title}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
@@ -138,7 +162,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
           >
             <div className="relative h-64">
               <img 
-                src={`https://picsum.photos/seed/${selectedOffer.imageSeed}/800/600`} 
+                src={IMAGE_MAP[selectedOffer.category || 'restaurant']} 
                 alt={selectedOffer.title}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
@@ -246,7 +270,74 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
            </div>
          </motion.div>
         )}
-      </AnimatePresence>
+       </AnimatePresence>
+
+       {/* MOCK SMS NOTIFICATION */}
+       {verifying === 'code' && (
+         <div className="fixed top-4 right-4 bg-white p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-[100] border-l-4 border-[#FF6321] max-w-[300px] animate-bounce">
+           <div className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mb-1">Nova Poruka</div>
+           <div className="text-sm font-medium text-gray-800">Tvoj Spasi Obrok kod za verifikaciju: <strong className="text-xl text-[#1a1c18] ml-1 tracking-widest">{authCode}</strong></div>
+         </div>
+       )}
+
+       {/* VERIFICATION DIALOG */}
+       <AnimatePresence>
+         {verifying !== 'none' && (
+           <motion.div 
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+           >
+             <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-xl">
+               <h3 className="text-xl font-bold mb-2 text-[#1a1c18]">
+                 {verifying === 'phone' ? 'Potvrdi broj telefona' : 'Unesi SMS kod'}
+               </h3>
+               <p className="text-sm text-[#6b7264] mb-6">
+                 {verifying === 'phone' ? 'Ovo osigurava da prodavci imaju prave narudžbe i sprječava spam rezervacije.' : 'Poslali smo ti 4-cifreni kod na uneseni broj.'}
+               </p>
+               
+               <input 
+                 type="text" 
+                 placeholder={verifying === 'phone' ? "06X XXX XXX" : "____"}
+                 value={verifying === 'phone' ? phoneNumber : inputCode}
+                 onChange={e => verifying === 'phone' ? setPhoneNumber(e.target.value) : setInputCode(e.target.value)}
+                 className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-3 mb-6 font-bold text-center text-lg focus:outline-none focus:ring-2 focus:ring-[#4f6d44] transition-all"
+               />
+
+               <div className="flex gap-3">
+                 <button 
+                   onClick={() => setVerifying('none')} 
+                   className="flex-1 py-3 text-[#6b7264] font-bold bg-[#fbfaf7] rounded-xl hover:bg-[#f0f4ef] transition-colors"
+                 >
+                   Odustani
+                 </button>
+                 <button 
+                   onClick={() => {
+                     if (verifying === 'phone') {
+                        if (phoneNumber.length < 6) return;
+                        setAuthCode(Math.floor(1000 + Math.random() * 9000).toString());
+                        setVerifying('code');
+                     } else {
+                        if (inputCode === authCode) {
+                           localStorage.setItem('phoneVerified', 'true');
+                           setIsVerified(true);
+                           setVerifying('none');
+                           executeReservation();
+                        } else {
+                           alert("Pogrešan kod!");
+                        }
+                     }
+                   }}
+                   className="flex-1 bg-[#4f6d44] text-white rounded-xl font-bold hover:bg-[#3d5434] transition-colors shadow-sm"
+                 >
+                   {verifying === 'phone' ? 'Pošalji kod' : 'Potvrdi'}
+                 </button>
+               </div>
+             </div>
+           </motion.div>
+         )}
+       </AnimatePresence>
     </div>
   );
 }

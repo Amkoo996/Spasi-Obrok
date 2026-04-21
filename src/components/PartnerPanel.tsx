@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Offer, Order, OrderStatus } from '../types';
+import { Offer, Order, OrderStatus, OfferCategory } from '../types';
 import { CheckCircle, Clock } from 'lucide-react';
 
 interface Props {
@@ -18,6 +18,7 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
   const [pickupEnd, setPickupEnd] = useState('20:00');
   const [noPork, setNoPork] = useState(false);
   const [vegan, setVegan] = useState(false);
+  const [category, setCategory] = useState<OfferCategory>('bakery');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -33,7 +34,7 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
       pickupEnd,
       noPork,
       vegan,
-      imageSeed: 'food' + Math.floor(Math.random() * 100),
+      category
     });
 
     // Reset simple form
@@ -100,6 +101,18 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
               placeholder="e.g. Bakery Surprise Box" 
               className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#4f6d44] text-[#1a1c18]"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#6b7264] uppercase tracking-wider mb-1">Kategorija</label>
+            <select 
+              value={category} onChange={e => setCategory(e.target.value as OfferCategory)}
+              className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#4f6d44] text-[#1a1c18] font-medium"
+            >
+              <option value="bakery">Pekara</option>
+              <option value="fast_food">Fast Food</option>
+              <option value="grocery">Market / Voćarna</option>
+              <option value="restaurant">Restoran / Bistro</option>
+            </select>
           </div>
           <div className="flex gap-4">
             <div className="flex-1">

@@ -1,3 +1,5 @@
+export type OfferCategory = 'bakery' | 'fast_food' | 'grocery' | 'restaurant';
+
 export interface Offer {
   id: string;
   title: string;
@@ -9,7 +11,8 @@ export interface Offer {
   pickupEnd: string;
   noPork: boolean;
   vegan: boolean;
-  imageSeed: string;
+  imageSeed?: string;
+  category: OfferCategory;
 }
 
 export type OrderStatus = 'reserved' | 'picked_up' | 'no_show';
