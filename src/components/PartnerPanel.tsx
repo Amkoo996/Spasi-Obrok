@@ -53,8 +53,41 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
   const platformFee = rawRevenue * 0.20; // 20% platform cut
   const netEarnings = rawRevenue - platformFee;
 
+  const totalReservations = orders.length;
+  const conversionRate = totalReservations > 0 ? ((pickedUpOrders.length / totalReservations) * 100).toFixed(1) : '0.0';
+
   return (
     <div className="p-4 flex flex-col gap-8 pb-24">
+      
+      {/* OBRAČUN / REVENUE DASHBOARD */}
+      <section>
+        <h2 className="font-bold text-xl text-[#1a1c18] mb-4">Statistika i Obračun</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white p-5 rounded-[32px] border border-[#eceae0] shadow-sm flex flex-col justify-center">
+            <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Ukupan prihod</span>
+            <span className="text-3xl font-black text-[#1a1c18]">{rawRevenue.toFixed(2)} KM</span>
+            <div className="text-xs text-[#6b7264] mt-2 font-medium">
+              {pickedUpOrders.length} uspješnih preuzimanja
+            </div>
+          </div>
+          <div className="bg-[#4f6d44] text-white p-5 rounded-[32px] shadow-sm flex flex-col justify-center">
+            <span className="text-xs font-bold text-white/80 uppercase tracking-widest mb-1">Vaša zarada</span>
+            <span className="text-3xl font-black">{netEarnings.toFixed(2)} KM</span>
+            <div className="text-[10px] text-white/80 mt-2 font-medium uppercase tracking-widest">
+              Platforma (20%): -{platformFee.toFixed(2)} KM
+            </div>
+          </div>
+          <div className="bg-[#fbfaf7] border border-[#eceae0] p-5 rounded-[32px] flex flex-col justify-center">
+            <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Rezervacije</span>
+            <span className="text-2xl font-black text-[#1a1c18]">{totalReservations}</span>
+          </div>
+          <div className="bg-[#fbfaf7] border border-[#eceae0] p-5 rounded-[32px] flex flex-col justify-center">
+            <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Konverzija</span>
+            <span className="text-2xl font-black text-[#1a1c18]">{conversionRate}%</span>
+          </div>
+        </div>
+      </section>
+
       {/* ADD OFFER FORM */}
       <section>
         <h2 className="font-bold text-xl text-[#1a1c18] mb-4">Create Offer</h2>
