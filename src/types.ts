@@ -13,6 +13,8 @@ export interface Offer {
   vegan: boolean;
   imageSeed?: string;
   category: OfferCategory;
+  reservedCount?: number;
+  pickedUpCount?: number;
 }
 
 export type OrderStatus = 'reserved' | 'picked_up' | 'no_show';
@@ -24,4 +26,5 @@ export interface Order {
   status: OrderStatus;
   createdAt: string;
   pickedUpAt?: string;
+  userPhone?: string;
 }

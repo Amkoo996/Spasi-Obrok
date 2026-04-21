@@ -1,7 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Offer, Order } from '../types';
 import { Clock, MapPin, CheckCircle, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+function CountdownTimer({ pickupEnd }: { pickupEnd: string }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const now = new Date();
+      const [hours, minutes] = pickupEnd.split(':').map(Number);
+      const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+      
+      const diff = target.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        return 'Isteklo';
+      }
+      
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      return `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+    };
+
+    setTimeLeft(calculateTime());
+    const interval = setInterval(() => setTimeLeft(calculateTime()), 1000);
+    return () => clearInterval(interval);
+  }, [pickupEnd]);
+
+  if (timeLeft === 'Isteklo') {
+    return <span className="text-red-500 font-bold ml-1">Isteklo</span>;
+  }
+
+  return <span className="font-mono ml-1 font-bold animate-pulse text-[#b45309]">{timeLeft}</span>;
+}
 
 interface Props {
   offers: Offer[];
@@ -11,6 +45,9 @@ interface Props {
 export default function CustomerFeed({ offers, onReserve }: Props) {
   const [filterNoPork, setFilterNoPork] = useState(false);
   const [filterVegan, setFilterVegan] = useState(false);
+  const [filterPrice, setFilterPrice] = useState<'all' | 'under5' | '5to10'>('all');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'bakery' | 'fast_food' | 'grocery' | 'restaurant'>('all');
+  
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
 
@@ -30,6 +67,9 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
   const filteredOffers = offers.filter(o => {
     if (filterNoPork && !o.noPork) return false;
     if (filterVegan && !o.vegan) return false;
+    if (filterPrice === 'under5' && o.price >= 5) return false;
+    if (filterPrice === '5to10' && (o.price < 5 || o.price > 10)) return false;
+    if (filterCategory !== 'all' && o.category !== filterCategory) return false;
     return true;
   });
 
@@ -60,22 +100,47 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
   return (
     <div className="relative">
       {/* FILTER BAR */}
-      <div className="bg-[#fbfaf7] px-4 py-3 sm:rounded-[32px] sm:border border-b border-[#eceae0] mb-6 flex flex-wrap gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] sm:shadow-sm sticky sm:relative top-[73px] sm:top-0 z-20">
-        <h2 className="hidden sm:block text-sm font-bold uppercase tracking-widest text-[#6b7264] w-full mb-1">Filters</h2>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input type="checkbox" className="hidden" checked={filterNoPork} onChange={() => setFilterNoPork(!filterNoPork)} />
-          <div className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${filterNoPork ? 'border-[#4f6d44] bg-[#f0f4ef]' : 'border-[#d1cfc0]'}`}>
-            {filterNoPork && <div className="w-2.5 h-2.5 bg-[#4f6d44] rounded-sm"></div>}
-          </div>
-          <span className="text-sm font-medium text-[#2d312a]">No Pork</span>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input type="checkbox" className="hidden" checked={filterVegan} onChange={() => setFilterVegan(!filterVegan)} />
-          <div className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${filterVegan ? 'border-[#4f6d44] bg-[#f0f4ef]' : 'border-[#d1cfc0]'}`}>
-            {filterVegan && <div className="w-2.5 h-2.5 bg-[#4f6d44] rounded-sm"></div>}
-          </div>
-          <span className="text-sm font-medium text-[#2d312a]">Vegan</span>
-        </label>
+      <div className="bg-[#fbfaf7] px-4 py-3 sm:rounded-[32px] sm:border border-b border-[#eceae0] mb-6 flex flex-wrap gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] sm:shadow-sm sticky sm:relative top-[73px] sm:top-0 z-20">
+        <div className="w-full flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center">
+          <label className="flex items-center gap-2 cursor-pointer group shrink-0 bg-white border border-[#eceae0] px-3 py-1.5 rounded-full">
+            <input type="checkbox" className="hidden" checked={filterNoPork} onChange={() => setFilterNoPork(!filterNoPork)} />
+            <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center transition-colors ${filterNoPork ? 'border-[#4f6d44] bg-[#f0f4ef]' : 'border-[#d1cfc0]'}`}>
+              {filterNoPork && <div className="w-2 h-2 bg-[#4f6d44] rounded-full"></div>}
+            </div>
+            <span className="text-xs font-bold text-[#2d312a]">🥩 No Pork</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer group shrink-0 bg-white border border-[#eceae0] px-3 py-1.5 rounded-full">
+            <input type="checkbox" className="hidden" checked={filterVegan} onChange={() => setFilterVegan(!filterVegan)} />
+            <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center transition-colors ${filterVegan ? 'border-[#4f6d44] bg-[#f0f4ef]' : 'border-[#d1cfc0]'}`}>
+              {filterVegan && <div className="w-2 h-2 bg-[#4f6d44] rounded-full"></div>}
+            </div>
+            <span className="text-xs font-bold text-[#2d312a]">🥦 Vegan</span>
+          </label>
+
+          <div className="w-px h-6 bg-[#eceae0] mx-1 shrink-0"></div>
+
+          <select 
+            value={filterPrice} 
+            onChange={(e) => setFilterPrice(e.target.value as any)}
+            className="shrink-0 bg-white border border-[#eceae0] rounded-full px-3 py-1.5 text-xs font-bold text-[#2d312a] focus:outline-none"
+          >
+            <option value="all">💰 Sve Cijene</option>
+            <option value="under5">0 - 5 KM</option>
+            <option value="5to10">5 - 10 KM</option>
+          </select>
+
+          <select 
+            value={filterCategory} 
+            onChange={(e) => setFilterCategory(e.target.value as any)}
+            className="shrink-0 bg-white border border-[#eceae0] rounded-full px-3 py-1.5 text-xs font-bold text-[#2d312a] focus:outline-none"
+          >
+            <option value="all">Sve Kategorije</option>
+            <option value="bakery">Pekare</option>
+            <option value="fast_food">Fast Food</option>
+            <option value="grocery">Marketi</option>
+            <option value="restaurant">Restorani</option>
+          </select>
+        </div>
       </div>
 
       {/* FEED */}
@@ -128,7 +193,9 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
 
               <div className="flex items-end justify-between border-t border-[#f5f4ef] pt-4">
                 <div>
-                  <p className="text-xs text-[#b45309] font-bold flex items-center gap-1 bg-[#fef3c7]/20 px-2 py-0.5 rounded-md inline-flex mb-1"><Clock size={12}/> ⏰ Preuzimanje do {offer.pickupEnd}</p>
+                  <p className="text-xs text-[#b45309] font-bold flex items-center gap-1 bg-[#fef3c7]/20 px-2 py-0.5 rounded-md inline-flex mb-1">
+                    <Clock size={12}/> Ističe za: <CountdownTimer pickupEnd={offer.pickupEnd} />
+                  </p>
                   <p className="text-2xl font-black text-[#1a1c18] mt-1">
                     {offer.price} KM <span className="text-sm font-normal text-[#6b7264] line-through">~{offer.valueEstimate} KM</span>
                   </p>
@@ -321,6 +388,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                      } else {
                         if (inputCode === authCode) {
                            localStorage.setItem('phoneVerified', 'true');
+                           localStorage.setItem('userPhone', phoneNumber);
                            setIsVerified(true);
                            setVerifying('none');
                            executeReservation();

@@ -64,18 +64,20 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
       <section>
         <h2 className="font-bold text-xl text-[#1a1c18] mb-4">Statistika i Obračun</h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-5 rounded-[32px] border border-[#eceae0] shadow-sm flex flex-col justify-center">
-            <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Ukupan prihod</span>
-            <span className="text-3xl font-black text-[#1a1c18]">{rawRevenue.toFixed(2)} KM</span>
-            <div className="text-xs text-[#6b7264] mt-2 font-medium">
-              {pickedUpOrders.length} uspješnih preuzimanja
+          <div className="bg-white p-5 rounded-[32px] border border-[#eceae0] shadow-sm flex flex-col justify-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5"><CheckCircle size={64}/></div>
+            <span className="text-[10px] font-bold text-[#6b7264] uppercase tracking-widest mb-1">Spasi Obrok Vam Je Donio</span>
+            <span className="text-4xl font-black text-[#1a1c18]">{pickedUpOrders.length}</span>
+            <div className="text-xs text-[#b45309] mt-1 font-bold">
+              novih kupaca
             </div>
           </div>
-          <div className="bg-[#4f6d44] text-white p-5 rounded-[32px] shadow-sm flex flex-col justify-center">
-            <span className="text-xs font-bold text-white/80 uppercase tracking-widest mb-1">Vaša zarada</span>
-            <span className="text-3xl font-black">{netEarnings.toFixed(2)} KM</span>
-            <div className="text-[10px] text-white/80 mt-2 font-medium uppercase tracking-widest">
-              Platforma (20%): -{platformFee.toFixed(2)} KM
+          <div className="bg-[#4f6d44] text-white p-5 rounded-[32px] shadow-sm flex flex-col justify-center relative overflow-hidden">
+            <div className="absolute bottom-0 right-0 p-2 opacity-10"><Clock size={80}/></div>
+            <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Uz Prethodni Otpad Ste</span>
+            <span className="text-3xl font-black">Zaradili {netEarnings.toFixed(2)} KM</span>
+            <div className="text-[10px] text-white/80 mt-2 font-medium">
+              (Nakon 20% provizije platforme)
             </div>
           </div>
           <div className="bg-[#fbfaf7] border border-[#eceae0] p-5 rounded-[32px] flex flex-col justify-center">

@@ -138,7 +138,7 @@ const INITIAL_OFFERS: Offer[] = [
 ];
 
 export default function App() {
-  const [view, setView] = useState<'customer' | 'partner'>('customer');
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   
   const [offers, setOffers] = useState<Offer[]>(() => {
     const saved = localStorage.getItem('offers');
@@ -154,6 +154,21 @@ export default function App() {
     const saved = localStorage.getItem('orderCounter');
     return saved ? Number(saved) : 1;
   });
+
+  const [partnerAccess, setPartnerAccess] = useState(localStorage.getItem('isPartner') === 'true');
+  const [partnerPinInput, setPartnerPinInput] = useState('');
+
+  // Setup basic router listener
+  useEffect(() => {
+    const onLocationChange = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', onLocationChange);
+    return () => window.removeEventListener('popstate', onLocationChange);
+  }, []);
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
 
   // Sync to localStorage
   useEffect(() => {
@@ -172,6 +187,25 @@ export default function App() {
     const offerIndex = offers.findIndex(o => o.id === offerId);
     if (offerIndex === -1 || offers[offerIndex].quantity <= 0) return null;
 
+    const myPhone = localStorage.getItem('userPhone');
+    if (!myPhone) return null;
+
+    // RULE 1: Max 2 Active Reservations
+    const myActiveOrders = orders.filter(o => o.userPhone === myPhone && o.status === 'reserved');
+    if (myActiveOrders.length >= 2) {
+      alert("Ne možete imati više od 2 aktivne rezervacije istovremeno.");
+      return null;
+    }
+
+    // RULE 2: No-show Penalties (2 no-shows in 24h = blocked)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const myRecentNoShows = orders.filter(o => o.userPhone === myPhone && o.status === 'no_show' && o.createdAt > twentyFourHoursAgo);
+    
+    if (myRecentNoShows.length >= 2) {
+      alert("Vaš račun je privremeno blokiran (24h) zbog previše nepreuzetih narudžbi.");
+      return null;
+    }
+
     const code = `SA-${orderCounter.toString().padStart(4, '0')}`;
     setOrderCounter(c => c + 1);
 
@@ -181,13 +215,18 @@ export default function App() {
       offerTitle: offers[offerIndex].title,
       status: 'reserved',
       createdAt: new Date().toISOString(),
+      userPhone: myPhone
     };
 
     setOrders(prev => [newOrder, ...prev]);
     
     setOffers(prev => {
       const copy = [...prev];
-      copy[offerIndex] = { ...copy[offerIndex], quantity: copy[offerIndex].quantity - 1 };
+      copy[offerIndex] = { 
+        ...copy[offerIndex], 
+        quantity: copy[offerIndex].quantity - 1,
+        reservedCount: (copy[offerIndex].reservedCount || 0) + 1 
+      };
       return copy;
     });
 
@@ -205,7 +244,20 @@ export default function App() {
 
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
     setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
+      if (o.id === orderId && o.status !== status) {
+        
+        // Handle Offer side-effects
+        if (status === 'picked_up') {
+          setOffers(offPrev => offPrev.map(offer => 
+            offer.id === o.offerId ? { ...offer, pickedUpCount: (offer.pickedUpCount || 0) + 1 } : offer
+          ));
+        } else if (status === 'no_show') {
+          // Restore Quantity
+          setOffers(offPrev => offPrev.map(offer => 
+            offer.id === o.offerId ? { ...offer, quantity: offer.quantity + 1 } : offer
+          ));
+        }
+
         return { 
           ...o, 
           status, 
@@ -231,39 +283,66 @@ export default function App() {
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-6 text-sm font-semibold">
-             <button onClick={() => setView('customer')} className={`${view === 'customer' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Deals</button>
-             <button onClick={() => setView('partner')} className={`${view === 'partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
+             <button onClick={() => navigate('/')} className={`${currentPath === '/' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Deals</button>
+             <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
           </div>
         </div>
       </header>
 
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 overflow-x-hidden">
-        {view === 'customer' ? (
-          <CustomerFeed offers={offers} onReserve={handleReserve} />
+        {currentPath === '/partner' ? (
+          partnerAccess ? (
+            <PartnerPanel 
+              offers={offers} 
+              orders={orders} 
+              onCreateOffer={handleCreateOffer}
+              onUpdateOrderStatus={handleUpdateOrderStatus}
+            />
+          ) : (
+             <div className="bg-white p-8 rounded-[32px] border border-[#eceae0] shadow-sm max-w-sm mx-auto mt-20 text-center">
+               <h2 className="text-xl font-bold mb-2">Partner Pristup</h2>
+               <p className="text-sm text-[#6b7264] mb-6">Pristup rezervisan za restorane.</p>
+               <input 
+                 type="password" 
+                 placeholder="Unesi PIN (1234)" 
+                 value={partnerPinInput}
+                 onChange={e => setPartnerPinInput(e.target.value)}
+                 className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-3 mb-4 text-center focus:outline-none focus:ring-2 focus:ring-[#4f6d44]"
+               />
+               <button 
+                 onClick={() => {
+                   if(partnerPinInput === '1234') {
+                     localStorage.setItem('isPartner', 'true');
+                     setPartnerAccess(true);
+                   } else {
+                     alert('Pogrešan PIN');
+                   }
+                 }}
+                 className="w-full bg-[#4f6d44] text-white font-bold py-3 rounded-xl hover:bg-[#3d5434]"
+               >
+                 Prijavi se
+               </button>
+             </div>
+          )
         ) : (
-          <PartnerPanel 
-            offers={offers} 
-            orders={orders} 
-            onCreateOffer={handleCreateOffer}
-            onUpdateOrderStatus={handleUpdateOrderStatus}
-          />
+          <CustomerFeed offers={offers} onReserve={handleReserve} />
         )}
       </main>
 
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#eceae0] z-40 pb-safe">
         <div className="max-w-md mx-auto flex">
           <button
-            onClick={() => setView('customer')}
-            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${view === 'customer' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
+            onClick={() => navigate('/')}
+            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${currentPath === '/' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
           >
-            <User size={20} strokeWidth={view === 'customer' ? 2.5 : 2} />
+            <User size={20} strokeWidth={currentPath === '/' ? 2.5 : 2} />
             <span className="text-[10px] uppercase tracking-wide font-semibold">Customer</span>
           </button>
           <button
-            onClick={() => setView('partner')}
-            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${view === 'partner' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
+            onClick={() => navigate('/partner')}
+            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${currentPath === '/partner' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
           >
-            <Store size={20} strokeWidth={view === 'partner' ? 2.5 : 2} />
+            <Store size={20} strokeWidth={currentPath === '/partner' ? 2.5 : 2} />
             <span className="text-[10px] uppercase tracking-wide font-semibold">Partner</span>
           </button>
         </div>
