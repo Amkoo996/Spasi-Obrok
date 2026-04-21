@@ -1,6 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { Offer, Order, OrderStatus, OfferCategory } from '../types';
-import { CheckCircle, Clock } from 'lucide-react';
+import { CheckCircle, Clock, QrCode, X } from 'lucide-react';
+import { Scanner } from '@yudiel/react-qr-scanner';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface Props {
   offers: Offer[];
@@ -19,6 +21,7 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
   const [noPork, setNoPork] = useState(false);
   const [vegan, setVegan] = useState(false);
   const [category, setCategory] = useState<OfferCategory>('bakery');
+  const [scanning, setScanning] = useState(false);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -69,24 +72,29 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
             <span className="text-[10px] font-bold text-[#6b7264] uppercase tracking-widest mb-1">Spasi Obrok Vam Je Donio</span>
             <span className="text-4xl font-black text-[#1a1c18]">{pickedUpOrders.length}</span>
             <div className="text-xs text-[#b45309] mt-1 font-bold">
-              novih kupaca
+              nova kupca preko SpasiObrok
             </div>
           </div>
           <div className="bg-[#4f6d44] text-white p-5 rounded-[32px] shadow-sm flex flex-col justify-center relative overflow-hidden">
             <div className="absolute bottom-0 right-0 p-2 opacity-10"><Clock size={80}/></div>
-            <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Uz Prethodni Otpad Ste</span>
-            <span className="text-3xl font-black">Zaradili {netEarnings.toFixed(2)} KM</span>
+            <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Dodatna zarada</span>
+            <span className="text-3xl font-black">+{netEarnings.toFixed(2)} KM</span>
             <div className="text-[10px] text-white/80 mt-2 font-medium">
-              (Nakon 20% provizije platforme)
+              koje biste inače bacili (nakon provizije)
             </div>
           </div>
           <div className="bg-[#fbfaf7] border border-[#eceae0] p-5 rounded-[32px] flex flex-col justify-center">
             <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Rezervacije</span>
             <span className="text-2xl font-black text-[#1a1c18]">{totalReservations}</span>
           </div>
-          <div className="bg-[#fbfaf7] border border-[#eceae0] p-5 rounded-[32px] flex flex-col justify-center">
-            <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Konverzija</span>
-            <span className="text-2xl font-black text-[#1a1c18]">{conversionRate}%</span>
+          {totalReservations > 0 && (
+            <div className="bg-[#fbfaf7] border border-[#eceae0] p-5 rounded-[32px] flex flex-col justify-center">
+              <span className="text-xs font-bold text-[#6b7264] uppercase tracking-widest mb-1">Konverzija</span>
+              <span className="text-2xl font-black text-[#1a1c18]">{conversionRate}%</span>
+            </div>
+          )}
+          <div className="col-span-2 sm:col-span-1 md:col-span-2 bg-[#fef3c7]/40 border border-[#fef3c7] rounded-[24px] p-5 text-center mt-1">
+             <p className="text-[#b45309] font-bold text-sm tracking-wide">❤️ SpasiObrok vam je pomogao da prodate hranu koja bi bila bačena.</p>
           </div>
         </div>
       </section>
@@ -187,10 +195,18 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
 
       {/* RESERVATIONS */}
       <section>
-        <h2 className="font-bold text-xl text-[#1a1c18] mb-4 flex items-center justify-between">
-          Active Orders
-          <span className="bg-[#f0f4ef] text-[#4f6d44] text-sm px-3 py-1 rounded-full">{activeOrders.length}</span>
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-xl text-[#1a1c18] flex items-center gap-2">
+            Active Orders
+            <span className="bg-[#f0f4ef] text-[#4f6d44] text-sm px-3 py-1 rounded-full">{activeOrders.length}</span>
+          </h2>
+          <button 
+            onClick={() => setScanning(true)}
+            className="flex items-center gap-2 bg-[#fbfaf7] border border-[#eceae0] text-[#1a1c18] font-bold text-sm px-4 py-2 rounded-xl shadow-sm hover:bg-[#f0f4ef] transition-colors"
+          >
+            <QrCode size={18}/> Skeniraj
+          </button>
+        </div>
         {activeOrders.length === 0 ? (
           <div className="text-[#6b7264] py-8 text-center bg-white rounded-[32px] border border-dashed border-[#d1cfc0]">
             No active reservations yet.
@@ -252,6 +268,46 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
            </div>
        </section>
       )}
+
+      <AnimatePresence>
+        {scanning && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4"
+          >
+            <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl">
+              <div className="p-4 flex items-center justify-between border-b border-[#eceae0]">
+                <h3 className="font-bold text-[#1a1c18] text-lg">Skeniraj rezervaciju</h3>
+                <button onClick={() => setScanning(false)} className="p-2 bg-[#fbfaf7] rounded-full hover:bg-[#eceae0] text-[#1a1c18] transition-colors"><X size={20}/></button>
+              </div>
+              <div className="aspect-square bg-black">
+                <Scanner 
+                  onScan={(detectedCodes) => {
+                    const code = detectedCodes[0]?.rawValue;
+                    if (code) {
+                      setScanning(false);
+                      const exists = activeOrders.some(o => o.id === code);
+                      if (exists) {
+                        if (window.confirm(`Pronađena narudžba: ${code}.\nOznačite kao preuzeto?`)) {
+                          onUpdateOrderStatus(code, 'picked_up');
+                        }
+                      } else {
+                        alert(`Kod ${code} nije aktivan ili je već obrađen.`);
+                      }
+                    }
+                  }}
+                  formats={['qr_code']}
+                />
+              </div>
+              <div className="p-6 text-center">
+                <p className="text-sm font-medium text-[#6b7264]">Usmjerite kameru prema QR kodu na uređaju kupca.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

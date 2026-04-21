@@ -1,6 +1,8 @@
 {
   "name": "Spasi Obrok",
   "description": "A web app connecting food businesses with customers to sell surplus food before closing time at discounted prices in Bosnia and Herzegovina.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": []
 }

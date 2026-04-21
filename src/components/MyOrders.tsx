@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Order, Offer } from '../types';
 import { X, Clock, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import QRCode from 'react-qr-code';
 
 interface Props {
   orders: Order[];
@@ -69,8 +70,11 @@ export default function MyOrders({ orders, offers }: Props) {
               <X size={24} />
             </button>
             <p className="text-[#b45309] font-bold uppercase tracking-widest mb-4 bg-[#fef3c7] px-4 py-2 rounded-full text-sm">Pokaži ekran radniku na kasi</p>
-            <div className="text-7xl sm:text-8xl font-black text-[#4f6d44] tracking-widest break-all">
+            <div className="text-7xl sm:text-8xl font-black text-[#4f6d44] tracking-widest break-all mb-8">
               {fullscreenCode}
+            </div>
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-[#eceae0]">
+              <QRCode value={fullscreenCode} size={200} fgColor="#1a1c18" bgColor="#ffffff" />
             </div>
             <p className="text-[#6b7264] font-medium mt-8 max-w-xs text-sm">
               Skeniranjem ili upisom ovog koda radnik će potvrditi vašu narudžbu i predati vam paket. Plaćanje vršite direktno njima.

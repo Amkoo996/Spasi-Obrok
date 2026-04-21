@@ -48,6 +48,7 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
   const [filterVegan, setFilterVegan] = useState(false);
   const [filterPrice, setFilterPrice] = useState<'all' | 'under5' | '5to10'>('all');
   const [filterCategory, setFilterCategory] = useState<'all' | 'bakery' | 'fast_food' | 'grocery' | 'restaurant'>('all');
+  const [quickFilter, setQuickFilter] = useState<'none' | 'popular' | 'ending_soon' | 'discount'>('none');
   
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
@@ -67,7 +68,7 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
     restaurant: "https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=800&q=80"
   };
 
-  const filteredOffers = offers.filter(o => {
+  let filteredOffers = offers.filter(o => {
     if (filterNoPork && !o.noPork) return false;
     if (filterVegan && !o.vegan) return false;
     if (filterPrice === 'under5' && o.price >= 5) return false;
@@ -75,6 +76,14 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
     if (filterCategory !== 'all' && o.category !== filterCategory) return false;
     return true;
   });
+
+  if (quickFilter === 'ending_soon') {
+    filteredOffers.sort((a, b) => a.pickupEnd.localeCompare(b.pickupEnd));
+  } else if (quickFilter === 'discount') {
+    filteredOffers.sort((a, b) => (b.valueEstimate - b.price) - (a.valueEstimate - a.price));
+  } else if (quickFilter === 'popular') {
+    filteredOffers.sort((a, b) => (b.reservedCount || 0) - (a.reservedCount || 0));
+  }
 
   const handleReserveClick = () => {
     if (!selectedOffer || selectedOffer.quantity === 0) return;
@@ -103,9 +112,23 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
   return (
     <div className="relative">
       {/* HERO SECTION */}
-      <div className="text-center py-10 pb-6 px-4">
-        <h1 className="text-4xl sm:text-5xl font-black text-[#1a1c18] mb-3 tracking-tight">Spasi hranu.<br/>Uštedi novac.</h1>
-        <p className="text-[#6b7264] font-medium text-lg">Svježa hrana u pola cijene, direktno iz omiljenih radnji.</p>
+      <div className="text-center py-12 pb-8 px-4">
+        <h1 className="text-4xl sm:text-5xl font-black text-[#1a1c18] mb-4 tracking-tight leading-tight">Uštedi do 70% na hrani<br/>koja bi bila bačena.</h1>
+        <p className="text-[#6b7264] font-medium text-lg mb-6">Preuzmi svježe pakete iz lokalnih radnji po nižoj cijeni.</p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm font-bold text-[#4f6d44] bg-[#f0f4ef] py-4 px-6 rounded-3xl sm:rounded-full inline-flex mx-auto w-full sm:w-auto text-left sm:text-center shadow-sm">
+          <span className="flex items-center gap-2"><CheckCircle size={18}/> Svježa, neprodana hrana</span>
+          <span className="hidden sm:inline opacity-30">•</span>
+          <span className="flex items-center gap-2"><CheckCircle size={18}/> Preuzimanje u radnji</span>
+          <span className="hidden sm:inline opacity-30">•</span>
+          <span className="flex items-center gap-2"><CheckCircle size={18}/> Preko 500+ kupaca</span>
+        </div>
+      </div>
+
+      {/* QUICK CHIPS */}
+      <div className="px-4 mb-3 max-w-5xl mx-auto flex gap-2 overflow-x-auto no-scrollbar py-2">
+        <button onClick={() => setQuickFilter(q => q === 'popular' ? 'none' : 'popular')} className={`shrink-0 px-5 py-2.5 rounded-[20px] text-sm font-bold transition-all ${quickFilter === 'popular' ? 'bg-[#b45309] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>🔥 Popularno</button>
+        <button onClick={() => setQuickFilter(q => q === 'ending_soon' ? 'none' : 'ending_soon')} className={`shrink-0 px-5 py-2.5 rounded-[20px] text-sm font-bold transition-all ${quickFilter === 'ending_soon' ? 'bg-[#b45309] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>⏰ Ističe uskoro</button>
+        <button onClick={() => setQuickFilter(q => q === 'discount' ? 'none' : 'discount')} className={`shrink-0 px-5 py-2.5 rounded-[20px] text-sm font-bold transition-all ${quickFilter === 'discount' ? 'bg-[#b45309] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>💸 Najveći popust</button>
       </div>
 
       {/* FILTER BAR */}
@@ -186,7 +209,9 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
                 <div>
                   <h3 className="text-lg font-bold text-[#1a1c18] leading-tight">{offer.title}</h3>
                   {offer.quantity > 0 && offer.quantity <= 2 && (
-                    <div className="text-[10px] font-bold text-red-500 uppercase mt-1">⚡ Rasprodaje se brzo</div>
+                    <div className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest mt-2 animate-pulse shadow-sm border border-red-200">
+                      ⚡ Rasprodaje se brzo
+                    </div>
                   )}
                 </div>
                 {offer.quantity > 0 && offer.quantity <= 3 && (
