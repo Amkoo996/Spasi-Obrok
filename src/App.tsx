@@ -88,7 +88,16 @@ export default function App() {
   };
 
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return { 
+          ...o, 
+          status, 
+          ...(status === 'picked_up' ? { pickedUpAt: new Date().toISOString() } : {})
+        };
+      }
+      return o;
+    }));
   };
 
   return (

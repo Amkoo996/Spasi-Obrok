@@ -170,7 +170,10 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
                  </div>
                  <div className="flex items-center gap-1.5 text-sm font-medium">
                    {order.status === 'picked_up' ? (
-                     <><CheckCircle size={16} className="text-[#4f6d44]"/> Picked up</>
+                     <div className="flex flex-col items-end">
+                       <span className="flex items-center gap-1 text-[#4f6d44]"><CheckCircle size={16}/> Picked up</span>
+                       {order.pickedUpAt && <span className="text-[10px] opacity-60 font-normal">at {new Date(order.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
+                     </div>
                    ) : (
                      'No show'
                    )}

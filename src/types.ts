@@ -20,4 +20,5 @@ export interface Order {
   offerTitle: string;
   status: OrderStatus;
   createdAt: string;
+  pickedUpAt?: string;
 }
