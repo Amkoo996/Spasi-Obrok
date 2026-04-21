@@ -88,7 +88,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                 <h3 className="text-lg font-bold text-[#1a1c18] leading-tight">{offer.title}</h3>
                 {offer.quantity > 0 && offer.quantity <= 3 && (
                   <span className="text-xs font-semibold text-[#b45309] bg-[#fef3c7] px-2 py-1 rounded-lg shrink-0">
-                    Samo {offer.quantity} ostalo!
+                    Only {offer.quantity} left
                   </span>
                 )}
               </div>
@@ -109,7 +109,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                   className={`px-6 py-2.5 rounded-2xl text-sm font-bold shadow-sm transition-colors ${offer.quantity > 0 ? 'bg-[#4f6d44] text-white active:scale-95' : 'bg-[#d1cfc0] text-white'}`}
                   onClick={(e) => { e.stopPropagation(); setSelectedOffer(offer); }}
                 >
-                  {offer.quantity > 0 ? 'Reserve' : 'Nedostupno'}
+                  {offer.quantity > 0 ? 'Reserve' : 'SOLD OUT'}
                 </button>
               </div>
             </div>
@@ -181,7 +181,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                 onClick={handleReserveClick}
                 className="w-full max-w-md bg-[#4f6d44] hover:bg-[#3d5434] disabled:bg-[#d1cfc0] text-white font-bold text-lg py-4 rounded-[20px] shadow-sm transition-colors flex items-center justify-center gap-2"
               >
-                {selectedOffer.quantity === 0 ? 'Nedostupno' : 'Rezerviši'}
+                {selectedOffer.quantity === 0 ? 'SOLD OUT' : 'Reserve'}
               </button>
             </div>
           </motion.div>

@@ -185,7 +185,10 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
             {activeOrders.map(order => (
               <div key={order.id} className="bg-white p-5 rounded-[32px] shadow-sm border border-[#eceae0] flex items-center justify-between">
                 <div>
-                  <div className="font-mono text-xl font-black tracking-widest text-[#4f6d44] mb-1">{order.id}</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="font-mono text-xl font-black tracking-widest text-[#4f6d44]">{order.id}</div>
+                    <span className="bg-[#fef3c7] text-[#b45309] text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded shadow-sm">Reserved</span>
+                  </div>
                   <div className="text-sm font-medium text-[#1a1c18]">{order.offerTitle}</div>
                 </div>
                 <div className="flex gap-2">
