@@ -40,9 +40,10 @@ function CountdownTimer({ pickupEnd }: { pickupEnd: string }) {
 interface Props {
   offers: Offer[];
   onReserve: (offerId: string) => Order | null;
+  onNavigate: (path: string) => void;
 }
 
-export default function CustomerFeed({ offers, onReserve }: Props) {
+export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
   const [filterNoPork, setFilterNoPork] = useState(false);
   const [filterVegan, setFilterVegan] = useState(false);
   const [filterPrice, setFilterPrice] = useState<'all' | 'under5' | '5to10'>('all');
@@ -51,7 +52,9 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
 
-  const [isVerified, setIsVerified] = useState(localStorage.getItem('phoneVerified') === 'true');
+  const [isVerified, setIsVerified] = useState(
+    localStorage.getItem('phoneVerified') === 'true' && !!localStorage.getItem('userPhone')
+  );
   const [verifying, setVerifying] = useState<'none' | 'phone' | 'code'>('none');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [authCode, setAuthCode] = useState('');
@@ -76,7 +79,7 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
   const handleReserveClick = () => {
     if (!selectedOffer || selectedOffer.quantity === 0) return;
     
-    if (!isVerified) {
+    if (!isVerified || !localStorage.getItem('userPhone')) {
       setVerifying('phone');
       return;
     }
@@ -99,6 +102,12 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
 
   return (
     <div className="relative">
+      {/* HERO SECTION */}
+      <div className="text-center py-10 pb-6 px-4">
+        <h1 className="text-4xl sm:text-5xl font-black text-[#1a1c18] mb-3 tracking-tight">Spasi hranu.<br/>Uštedi novac.</h1>
+        <p className="text-[#6b7264] font-medium text-lg">Svježa hrana u pola cijene, direktno iz omiljenih radnji.</p>
+      </div>
+
       {/* FILTER BAR */}
       <div className="bg-[#fbfaf7] px-4 py-3 sm:rounded-[32px] sm:border border-b border-[#eceae0] mb-6 flex flex-wrap gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] sm:shadow-sm sticky sm:relative top-[73px] sm:top-0 z-20">
         <div className="w-full flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center">
@@ -265,10 +274,18 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                 <div className="text-[#6b7264]">Preuzmite danas do <strong className="text-[#1a1c18]">{selectedOffer.pickupEnd}</strong></div>
               </div>
 
-              <h3 className="font-bold text-lg mb-2 text-[#1a1c18]">Šta vas očekuje unutra?</h3>
-              <p className="text-[#6b7264] leading-relaxed max-w-xl">
-                Hrana je neprodana, ali potpuno svježa. Sadržaj iznenađenja može varirati zavisno od dnevne ponude (šta taj dan nije prodato), no vrijednost hrane unutra prelazi iznos koji plaćate (~{selectedOffer.valueEstimate} KM).
-              </p>
+              <h3 className="font-bold text-lg mb-3 text-[#1a1c18]">Šta vas očekuje unutra?</h3>
+              
+              <div className="bg-[#f0f4ef] rounded-2xl p-5 mb-6 text-sm text-[#4f6d44] font-medium leading-relaxed shadow-sm">
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3"><div className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#4f6d44]" /> Hrana nije servirana, već neprodana (fresh surplus)</li>
+                  <li className="flex items-start gap-3"><div className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#4f6d44]" /> Sadržaj paketa može varirati iznenađenjem</li>
+                  <li className="flex items-start gap-3"><div className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#4f6d44]" /> Plaćanje se vrši na licu mjesta</li>
+                  <li className="flex items-start gap-3 text-red-600"><div className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-600" /> Bez koda nema preuzimanja</li>
+                </ul>
+              </div>
+
+              <button onClick={() => onNavigate('/terms')} className="text-sm font-bold text-[#6b7264] underline hover:text-[#1a1c18] transition-colors inline-block mb-10">Pročitaj potpune Uslove Korištenja</button>
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#eceae0] p-4 pb-safe flex justify-center z-50">
@@ -326,10 +343,19 @@ export default function CustomerFeed({ offers, onReserve }: Props) {
                </div>
              </div>
 
-             <div className="mt-6 pt-6 border-t border-[#eceae0]">
+             <div className="mt-6 pt-6 border-t border-[#eceae0] space-y-3">
+               <button 
+                 onClick={() => {
+                   closeModals();
+                   onNavigate('/my-orders');
+                 }}
+                 className="w-full py-4 bg-[#fef3c7] hover:bg-[#fde68a] text-[#b45309] border border-[#fef3c7] rounded-2xl text-sm font-bold shadow-sm transition-colors uppercase tracking-widest"
+               >
+                 Prikaži Moje Rezervacije
+               </button>
                <button 
                  onClick={closeModals}
-                 className="w-full py-3 bg-[#4f6d44] hover:bg-[#3d5434] text-white rounded-2xl text-sm font-bold shadow-sm transition-colors"
+                 className="w-full py-4 bg-[#fbfaf7] hover:bg-[#f5f4ef] text-[#6b7264] border border-[#eceae0] rounded-2xl text-sm font-bold shadow-sm transition-colors"
                >
                  Povratak na Ponude
                </button>

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Store, User, Utensils } from 'lucide-react';
+import { Store, User, Utensils, Ticket } from 'lucide-react';
 import { Offer, Order, OrderStatus } from './types';
 import CustomerFeed from './components/CustomerFeed';
 import PartnerPanel from './components/PartnerPanel';
+import MyOrders from './components/MyOrders';
+import Terms from './components/Terms';
 
 const INITIAL_OFFERS: Offer[] = [
   {
@@ -188,7 +190,10 @@ export default function App() {
     if (offerIndex === -1 || offers[offerIndex].quantity <= 0) return null;
 
     const myPhone = localStorage.getItem('userPhone');
-    if (!myPhone) return null;
+    if (!myPhone) {
+      alert("Greška sistema: Nije pronađen Vaš broj. Molimo osvježite stranicu i potvrdite broj telefona ponovo.");
+      return null;
+    }
 
     // RULE 1: Max 2 Active Reservations
     const myActiveOrders = orders.filter(o => o.userPhone === myPhone && o.status === 'reserved');
@@ -272,11 +277,11 @@ export default function App() {
     <div className="min-h-screen bg-[#fbfaf7] text-[#2d312a] flex flex-col font-sans sm:mb-0 mb-16 pb-safe antialiased">
       <header className="bg-white border-b border-[#eceae0] sticky top-0 z-30 shrink-0 px-4 sm:px-8 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#4f6d44] rounded-xl flex items-center justify-center text-white font-bold text-xl">S</div>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="w-10 h-10 bg-[#4f6d44] rounded-xl flex items-center justify-center text-white text-xl">🍱</div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-[#1a1c18]">Spasi Obrok</h1>
-              <p className="text-xs text-[#6b7264] flex items-center gap-1 font-medium">
+              <h1 className="text-xl font-bold tracking-tight text-[#22c55e]">SpasiObrok</h1>
+              <p className="text-[11px] text-[#6b7264] flex items-center gap-1 font-bold tracking-wide uppercase">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 Sarajevo, BiH
               </p>
@@ -284,6 +289,7 @@ export default function App() {
           </div>
           <div className="hidden sm:flex items-center gap-6 text-sm font-semibold">
              <button onClick={() => navigate('/')} className={`${currentPath === '/' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Deals</button>
+             <button onClick={() => navigate('/my-orders')} className={`${currentPath === '/my-orders' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Moje Rezervacije</button>
              <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
           </div>
         </div>
@@ -307,7 +313,7 @@ export default function App() {
                  placeholder="Unesi PIN (1234)" 
                  value={partnerPinInput}
                  onChange={e => setPartnerPinInput(e.target.value)}
-                 className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-3 mb-4 text-center focus:outline-none focus:ring-2 focus:ring-[#4f6d44]"
+                 className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-3 mb-4 text-center text-3xl tracking-[1em] font-mono focus:outline-none focus:ring-2 focus:ring-[#4f6d44]"
                />
                <button 
                  onClick={() => {
@@ -318,14 +324,18 @@ export default function App() {
                      alert('Pogrešan PIN');
                    }
                  }}
-                 className="w-full bg-[#4f6d44] text-white font-bold py-3 rounded-xl hover:bg-[#3d5434]"
+                 className="w-full bg-[#4f6d44] text-white font-bold py-4 rounded-2xl shadow-sm hover:bg-[#3d5434] transition-colors"
                >
                  Prijavi se
                </button>
              </div>
           )
+        ) : currentPath === '/my-orders' ? (
+          <MyOrders orders={orders} offers={offers} />
+        ) : currentPath === '/terms' ? (
+          <Terms />
         ) : (
-          <CustomerFeed offers={offers} onReserve={handleReserve} />
+          <CustomerFeed offers={offers} onReserve={handleReserve} onNavigate={navigate} />
         )}
       </main>
 
@@ -335,15 +345,22 @@ export default function App() {
             onClick={() => navigate('/')}
             className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${currentPath === '/' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
           >
-            <User size={20} strokeWidth={currentPath === '/' ? 2.5 : 2} />
-            <span className="text-[10px] uppercase tracking-wide font-semibold">Customer</span>
+            <User size={20} className={currentPath === '/' ? 'fill-[#4f6d44]/10' : ''} strokeWidth={currentPath === '/' ? 2.5 : 2} />
+            <span className="text-[10px] uppercase tracking-wide font-bold">Istraži</span>
+          </button>
+          <button
+            onClick={() => navigate('/my-orders')}
+            className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${currentPath === '/my-orders' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
+          >
+            <Ticket size={20} className={currentPath === '/my-orders' ? 'fill-[#4f6d44]/10' : ''} strokeWidth={currentPath === '/my-orders' ? 2.5 : 2} />
+            <span className="text-[10px] uppercase tracking-wide font-bold">Karte</span>
           </button>
           <button
             onClick={() => navigate('/partner')}
             className={`flex-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors ${currentPath === '/partner' ? 'text-[#4f6d44]' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}
           >
-            <Store size={20} strokeWidth={currentPath === '/partner' ? 2.5 : 2} />
-            <span className="text-[10px] uppercase tracking-wide font-semibold">Partner</span>
+            <Store size={20} className={currentPath === '/partner' ? 'fill-[#4f6d44]/10' : ''} strokeWidth={currentPath === '/partner' ? 2.5 : 2} />
+            <span className="text-[10px] uppercase tracking-wide font-bold">Partner</span>
           </button>
         </div>
       </nav>
