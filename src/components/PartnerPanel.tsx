@@ -42,6 +42,16 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
 
   const activeOrders = orders.filter(o => o.status === 'reserved');
   const pastOrders = orders.filter(o => o.status !== 'reserved');
+  const pickedUpOrders = orders.filter(o => o.status === 'picked_up');
+
+  // Revenue Calculations
+  const rawRevenue = pickedUpOrders.reduce((sum, order) => {
+    const offer = offers.find(o => o.id === order.offerId);
+    return sum + (offer ? offer.price : 0);
+  }, 0);
+  
+  const platformFee = rawRevenue * 0.20; // 20% platform cut
+  const netEarnings = rawRevenue - platformFee;
 
   return (
     <div className="p-4 flex flex-col gap-8 pb-24">
@@ -145,12 +155,20 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
                   <div className="font-mono text-xl font-black tracking-widest text-[#4f6d44] mb-1">{order.id}</div>
                   <div className="text-sm font-medium text-[#1a1c18]">{order.offerTitle}</div>
                 </div>
-                <button 
-                  onClick={() => onUpdateOrderStatus(order.id, 'picked_up')}
-                  className="bg-[#4f6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-sm hover:bg-[#3d5434] transition-colors active:scale-95"
-                >
-                  Mark Picked Up
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => onUpdateOrderStatus(order.id, 'no_show')}
+                    className="bg-white border border-[#eceae0] text-[#6b7264] px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors active:scale-95"
+                  >
+                    No Show
+                  </button>
+                  <button 
+                    onClick={() => onUpdateOrderStatus(order.id, 'picked_up')}
+                    className="bg-[#4f6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-sm hover:bg-[#3d5434] transition-colors active:scale-95"
+                  >
+                    PREUZETO
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -171,11 +189,11 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
                  <div className="flex items-center gap-1.5 text-sm font-medium">
                    {order.status === 'picked_up' ? (
                      <div className="flex flex-col items-end">
-                       <span className="flex items-center gap-1 text-[#4f6d44]"><CheckCircle size={16}/> Picked up</span>
+                       <span className="flex items-center gap-1 text-[#4f6d44]"><CheckCircle size={16}/> Preuzeto</span>
                        {order.pickedUpAt && <span className="text-[10px] opacity-60 font-normal">at {new Date(order.pickedUpAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>}
                      </div>
                    ) : (
-                     'No show'
+                     <span className="text-[#b45309] border border-[#fef3c7] bg-[#fef3c7]/30 px-2 py-1 rounded text-xs font-bold uppercase">Nije se pojavio</span>
                    )}
                  </div>
                </div>
