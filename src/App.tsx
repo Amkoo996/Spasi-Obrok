@@ -417,14 +417,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-[#2d312a] flex flex-col font-sans sm:mb-0 mb-16 pb-safe antialiased">
-      <header className="bg-white border-b border-[#eceae0] sticky top-0 z-30 shrink-0 px-4 sm:px-8 py-3 sm:py-4">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-0">
-          <div className="flex items-center gap-3 cursor-pointer justify-center sm:justify-start w-full sm:w-auto" onClick={() => navigate('/')}>
+      <header className="bg-white border-b border-[#eceae0] sticky top-0 z-30 shrink-0 px-4 sm:px-8 py-3">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-[#4f6d44] rounded-xl flex items-center justify-center text-white text-xl shadow-sm shrink-0">🍱</div>
             <div className="flex flex-col">
-              <h1 className="text-2xl sm:text-xl font-black tracking-tight text-[#1a1c18] leading-none mb-1 sm:mb-0">Spasi<span className="text-[#4f6d44]">Obrok</span></h1>
-              <p className="text-[11px] text-[#6b7264] flex items-center gap-1 font-bold tracking-wide uppercase mt-0 sm:mt-0.5">
-                <svg className="w-3 h-3 text-[#4f6d44]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <h1 className="text-xl font-black tracking-tight text-[#1a1c18] leading-none">Spasi<span className="text-[#b45309]">Obrok</span></h1>
+              <p className="text-[10px] text-[#6b7264] flex items-center gap-0.5 font-bold tracking-wide uppercase mt-0.5">
+                <svg className="w-2.5 h-2.5 text-[#4f6d44] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 Sarajevo, BiH
               </p>
             </div>
@@ -439,7 +439,9 @@ export default function App() {
                     </div>
                  )}
                  <button onClick={() => navigate('/my-orders')} className={`${currentPath === '/my-orders' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Moje Rezervacije</button>
-                 <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
+                 {(userProfile?.role === 'partner' || userProfile?.role === 'admin') && (
+                   <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
+                 )}
                  {userProfile?.role === 'admin' && (
                    <button onClick={() => navigate('/admin')} className={`${currentPath === '/admin' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Admin</button>
                  )}
@@ -449,6 +451,10 @@ export default function App() {
                <button onClick={loginWithGoogle} className="bg-[#4f6d44] text-white px-5 py-2 rounded-full hover:bg-[#3d5434] transition-colors">Prijavi se</button>
              )}
           </div>
+          {/* Mobile Login Button when not logged in */}
+          {!user && (
+            <button onClick={loginWithGoogle} className="sm:hidden bg-white border border-[#eceae0] text-[#1a1c18] px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">Prijavi se</button>
+          )}
         </div>
       </header>
 

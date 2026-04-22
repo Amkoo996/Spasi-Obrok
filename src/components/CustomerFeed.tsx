@@ -138,36 +138,38 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
       </div>
 
       {/* QUICK CHIPS */}
-      <div className="px-4 mb-3 max-w-5xl mx-auto flex gap-2 overflow-x-auto no-scrollbar py-2">
-        <button onClick={() => setQuickFilter(q => q === 'popular' ? 'none' : 'popular')} className={`shrink-0 px-5 py-2.5 rounded-[20px] text-sm font-bold transition-all ${quickFilter === 'popular' ? 'bg-[#b45309] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>🔥 Popularno</button>
-        <button onClick={() => setQuickFilter(q => q === 'ending_soon' ? 'none' : 'ending_soon')} className={`shrink-0 px-5 py-2.5 rounded-[20px] text-sm font-bold transition-all ${quickFilter === 'ending_soon' ? 'bg-[#b45309] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>⏰ Ističe uskoro</button>
-        <button onClick={() => setQuickFilter(q => q === 'discount' ? 'none' : 'discount')} className={`shrink-0 px-5 py-2.5 rounded-[20px] text-sm font-bold transition-all ${quickFilter === 'discount' ? 'bg-[#b45309] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>💸 Najveći popust</button>
+      <div className="max-w-5xl mx-auto px-4 mb-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+          <button onClick={() => setQuickFilter(q => q === 'popular' ? 'none' : 'popular')} className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${quickFilter === 'popular' ? 'bg-[#1a1c18] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>🔥 Popularno</button>
+          <button onClick={() => setQuickFilter(q => q === 'ending_soon' ? 'none' : 'ending_soon')} className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${quickFilter === 'ending_soon' ? 'bg-[#1a1c18] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>⏰ Ističe uskoro</button>
+          <button onClick={() => setQuickFilter(q => q === 'discount' ? 'none' : 'discount')} className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${quickFilter === 'discount' ? 'bg-[#1a1c18] text-white shadow-md' : 'bg-white border border-[#eceae0] text-[#1a1c18] hover:bg-gray-50'} flex items-center gap-2`}>💸 Najveći popust</button>
+        </div>
       </div>
 
-      {/* FILTER BAR */}
-      <div className="bg-[#fbfaf7] px-4 py-3 sm:rounded-[32px] sm:border border-b border-[#eceae0] mb-6 flex flex-wrap gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] sm:shadow-sm sticky sm:relative top-[73px] sm:top-0 z-20">
-        <div className="w-full flex gap-2 overflow-x-auto pb-1 no-scrollbar items-center">
-          <label className="flex items-center gap-2 cursor-pointer group shrink-0 bg-white border border-[#eceae0] px-3 py-1.5 rounded-full">
+      {/* FILTER BAR FULL WIDTH WRAPPER */}
+      <div className="w-full bg-white border-y border-[#eceae0] mb-8 sticky top-[65px] sm:top-0 z-20 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
+          <label className="flex items-center gap-2 cursor-pointer group shrink-0 bg-[#fbfaf7] border border-[#eceae0] px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
             <input type="checkbox" className="hidden" checked={filterNoPork} onChange={() => setFilterNoPork(!filterNoPork)} />
-            <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center transition-colors ${filterNoPork ? 'border-[#4f6d44] bg-[#f0f4ef]' : 'border-[#d1cfc0]'}`}>
-              {filterNoPork && <div className="w-2 h-2 bg-[#4f6d44] rounded-full"></div>}
+            <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center transition-colors ${filterNoPork ? 'border-[#4f6d44] bg-[#4f6d44]' : 'border-[#d1cfc0]'}`}>
+              {filterNoPork && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
             </div>
             <span className="text-xs font-bold text-[#2d312a]">🥩 No Pork</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer group shrink-0 bg-white border border-[#eceae0] px-3 py-1.5 rounded-full">
+          <label className="flex items-center gap-2 cursor-pointer group shrink-0 bg-[#fbfaf7] border border-[#eceae0] px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
             <input type="checkbox" className="hidden" checked={filterVegan} onChange={() => setFilterVegan(!filterVegan)} />
-            <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center transition-colors ${filterVegan ? 'border-[#4f6d44] bg-[#f0f4ef]' : 'border-[#d1cfc0]'}`}>
-              {filterVegan && <div className="w-2 h-2 bg-[#4f6d44] rounded-full"></div>}
+            <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center transition-colors ${filterVegan ? 'border-[#4f6d44] bg-[#4f6d44]' : 'border-[#d1cfc0]'}`}>
+              {filterVegan && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
             </div>
             <span className="text-xs font-bold text-[#2d312a]">🥦 Vegan</span>
           </label>
 
-          <div className="w-px h-6 bg-[#eceae0] mx-1 shrink-0"></div>
+          <div className="w-px h-6 bg-[#eceae0] mx-2 shrink-0"></div>
 
           <select 
             value={filterPrice} 
             onChange={(e) => setFilterPrice(e.target.value as any)}
-            className="shrink-0 bg-white border border-[#eceae0] rounded-full px-3 py-1.5 text-xs font-bold text-[#2d312a] focus:outline-none"
+            className="shrink-0 bg-[#fbfaf7] border border-[#eceae0] rounded-full px-4 py-2 text-xs font-bold text-[#2d312a] focus:outline-none focus:ring-2 focus:ring-[#4f6d44] hover:bg-gray-50 cursor-pointer appearance-none pr-8 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231a1c18%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-no-repeat bg-[position:right_12px_center]"
           >
             <option value="all">💰 Sve Cijene</option>
             <option value="under5">0 - 5 KM</option>
@@ -177,9 +179,9 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
           <select 
             value={filterCategory} 
             onChange={(e) => setFilterCategory(e.target.value as any)}
-            className="shrink-0 bg-white border border-[#eceae0] rounded-full px-3 py-1.5 text-xs font-bold text-[#2d312a] focus:outline-none"
+            className="shrink-0 bg-[#fbfaf7] border border-[#eceae0] rounded-full px-4 py-2 text-xs font-bold text-[#2d312a] focus:outline-none focus:ring-2 focus:ring-[#4f6d44] hover:bg-gray-50 cursor-pointer appearance-none pr-8 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231a1c18%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-no-repeat bg-[position:right_12px_center]"
           >
-            <option value="all">Sve Kategorije</option>
+            <option value="all">🍽 Sve Kategorije</option>
             <option value="bakery">Pekare</option>
             <option value="fast_food">Fast Food</option>
             <option value="grocery">Marketi</option>
@@ -189,7 +191,7 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
       </div>
 
       {/* FEED */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+      <div className="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
         <div className="flex items-baseline justify-between mb-2 md:col-span-2">
           <h2 className="text-2xl font-bold text-[#1a1c18]">🔥 Ponude blizu vas</h2>
         </div>

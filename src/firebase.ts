@@ -36,9 +36,24 @@ export const loginWithGoogle = async () => {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (err: any) {
-    console.error("Google auth failed:", err);
+    console.warn("Google auth failed:", err.code, err.message);
+    
+    // Handled specific popup errors
     if (err.code === 'auth/popup-blocked') {
-      alert("Please allow popups to sign in with Google.");
+      alert("Skočni prozor za prijavu je blokiran. Pojavit će se u adresnoj traci 'Pop-up blocked', molimo Vas dozvolite ga ili otvorite aplikaciju u novom tabu.");
+    } 
+    else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+      console.warn("Korisnik je ranije ugasio prozor za prijavu.");
+    }
+    else if (err.code === 'auth/unauthorized-domain') {
+       alert("Prijava odbijena. Vaša trenutna web adresa (domena) nije odobrena unutar Firebase Konzole. Dodajte ovu web adresu u Firebase -> Authentication -> Settings -> Authorized domains.");
+    }
+    else if (err.message?.includes('Pending promise was never set')) {
+       // This is a known internal React/Firebase strict mode glitch usually fixed by just retrying or unmounting
+       console.warn("Firebase internal assertion glitch ignored.");
+    } 
+    else {
+      alert("Greška pri prijavi: " + err.message);
     }
     return null;
   }
