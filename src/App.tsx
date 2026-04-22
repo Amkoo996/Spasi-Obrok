@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Store, User, Utensils, Ticket } from 'lucide-react';
-import { Offer, Order, OrderStatus } from './types';
+import { Offer, Order, OrderStatus, UserProfile } from './types';
 import CustomerFeed from './components/CustomerFeed';
 import PartnerPanel from './components/PartnerPanel';
+import AdminPanel from './components/AdminPanel';
 import MyOrders from './components/MyOrders';
 import Terms from './components/Terms';
 import { auth, db, loginWithGoogle } from './firebase';
@@ -151,10 +152,35 @@ export default function App() {
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(auth.currentUser);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Initialize Firebase Auth
+  // Initialize Firebase Auth & Load Profile
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
+    const unsub = auth.onAuthStateChanged(async (u) => {
+      if (u) {
+        try {
+          const userRef = doc(db, 'users', u.uid);
+          const userDoc = await getDoc(userRef);
+          if (!userDoc.exists()) {
+             const isAdmin = u.email === 'reddemption19@gmail.com';
+             const newUser: UserProfile = { uid: u.uid, email: u.email || '', role: isAdmin ? 'admin' : 'customer', points: 0 };
+             await setDoc(userRef, newUser);
+             setUserProfile(newUser);
+          } else {
+             const data = userDoc.data() as UserProfile;
+             // Auto-upgrade for testing
+             if (u.email === 'reddemption19@gmail.com' && data.role === 'customer') {
+               data.role = 'admin';
+               await updateDoc(userRef, { role: 'admin' });
+             }
+             setUserProfile(data);
+          }
+        } catch (e) {
+          console.error("Error loading profile", e);
+        }
+      } else {
+        setUserProfile(null);
+      }
       setUser(u);
       setLoading(false);
     });
@@ -258,8 +284,19 @@ export default function App() {
           nextId = (metaDoc.data().lastOrderId || 0) + 1;
         }
         
-        const currentQty = offerDoc.data()?.quantity || 0;
+        const offerData = offerDoc.data();
+        const currentQty = offerData?.quantity || 0;
         if (currentQty <= 0) throw new Error("SOLD_OUT");
+
+        // Time check (Expiring)
+        if (offerData?.pickupEnd) {
+          const now = new Date();
+          const [hours, minutes] = offerData.pickupEnd.split(':').map(Number);
+          const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+          if (now.getTime() > target.getTime()) {
+             throw new Error("EXPIRED");
+          }
+        }
 
         // NOW ALL WRITES
         orderCode = `SA-${nextId.toString().padStart(4, '0')}`;
@@ -296,9 +333,15 @@ export default function App() {
         partnerId: offer.partnerId || 'admin'
       } as Order;
 
-    } catch (e) {
-      console.error(e);
-      alert("Nažalost, neko je bio brži! Paket je rezervisan.");
+    } catch (e: any) {
+      if (e.message === 'EXPIRED') {
+         alert("Ova ponuda je nažalost istekla za danas.");
+      } else if (e.message === 'SOLD_OUT') {
+         alert("Nažalost, neko je bio brži! Paket je rezervisan.");
+      } else {
+         console.error("Reserve error:", e);
+         alert("Došlo je do greške. Molimo pokušajte ponovo.");
+      }
       return null;
     }
   };
@@ -318,19 +361,6 @@ export default function App() {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
     
-    // Find doc id for order (where id == SA-0000)
-    // Wait, order records their own ID as "id" but document ID could be random or same.
-    // Assuming doc ID is different than SA id, need to query... wait, let's just make the DOC ID = orderCode
-    // Earlier I did const orderRef = doc(collection(db, 'orders')); so it was random.
-    // Since we need to update by SA-code:
-    let realDocId = null;
-    orders.forEach(o => {
-      // In my previous step I merged d.id and ...d.data().
-      // Let's assume orderId is the SA- code, which we set to id.
-      // We actually need the document ID. Let's make myTransaction set the document id to the SA- code.
-      realDocId = orderId; 
-    });
-    
     try {
       if (status === 'picked_up') {
         await updateDoc(doc(db, 'orders', orderId), {
@@ -340,6 +370,12 @@ export default function App() {
         await updateDoc(doc(db, 'offers', order.offerId), {
            pickedUpCount: increment(1)
         });
+        // Loyalty points
+        if (order.userId) {
+          await updateDoc(doc(db, 'users', order.userId), {
+            points: increment(1)
+          });
+        }
       } else if (status === 'no_show') {
          await updateDoc(doc(db, 'orders', orderId), {
            status
@@ -374,8 +410,16 @@ export default function App() {
              <button onClick={() => navigate('/')} className={`${currentPath === '/' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Deals</button>
              {user ? (
                <>
+                 {userProfile && (
+                    <div className="flex items-center gap-1.5 bg-[#fef3c7] text-[#b45309] px-3 py-1.5 rounded-full text-xs font-bold border border-[#fef3c7]/50 shadow-sm cursor-help" title="Svaki preuzet paket nosi bod. Sakupi 5 bodova!">
+                       ⭐ {userProfile.points} <span className="hidden lg:inline">Bodova</span>
+                    </div>
+                 )}
                  <button onClick={() => navigate('/my-orders')} className={`${currentPath === '/my-orders' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Moje Rezervacije</button>
                  <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
+                 {userProfile?.role === 'admin' && (
+                   <button onClick={() => navigate('/admin')} className={`${currentPath === '/admin' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Admin</button>
+                 )}
                  <button onClick={() => auth.signOut()} className="text-red-500 hover:text-red-700">Odjavi se</button>
                </>
              ) : (
@@ -387,24 +431,36 @@ export default function App() {
 
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 overflow-x-hidden">
         {currentPath === '/partner' ? (
-          user ? (
+          (user && userProfile?.role === 'partner') || (user && userProfile?.role === 'admin') ? (
             <PartnerPanel 
-              offers={offers} 
-              orders={orders} 
+              offers={offers.filter(o => userProfile.role === 'admin' || o.partnerId === user.uid)} 
+              orders={userProfile.role === 'admin' ? orders : orders.filter(o => o.partnerId === user.uid)} 
               onCreateOffer={handleCreateOffer}
               onUpdateOrderStatus={handleUpdateOrderStatus}
             />
           ) : (
              <div className="bg-white p-8 rounded-[32px] border border-[#eceae0] shadow-sm max-w-sm mx-auto mt-20 text-center">
                <h2 className="text-xl font-bold mb-2">Partner Pristup</h2>
-               <p className="text-sm text-[#6b7264] mb-6">Pristup rezervisan za restorane.</p>
-               <button 
-                 onClick={loginWithGoogle}
-                 className="w-full bg-[#4f6d44] text-white font-bold py-4 rounded-2xl shadow-sm hover:bg-[#3d5434] transition-colors"
-               >
-                 Prijavi se sa Google nalogom
-               </button>
+               <p className="text-sm text-[#6b7264] mb-6">Pristup rezervisan za restorane. Ako mislite da je greška, kontaktirajte podršku.</p>
+               {!user ? (
+                 <button 
+                   onClick={loginWithGoogle}
+                   className="w-full bg-[#4f6d44] text-white font-bold py-4 rounded-2xl shadow-sm hover:bg-[#3d5434] transition-colors"
+                 >
+                   Prijavi se sa Google nalogom
+                 </button>
+               ) : (
+                 <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm font-bold border border-red-200">
+                    Nemate pristup ovom panelu. (Role: {userProfile?.role || 'customer'})
+                 </div>
+               )}
              </div>
+          )
+        ) : currentPath === '/admin' ? (
+          userProfile?.role === 'admin' ? (
+             <AdminPanel orders={orders} offers={offers} users={[]} />
+          ) : (
+            <div className="text-center py-20 text-red-600 font-bold">Pristup Odbijen</div>
           )
         ) : currentPath === '/my-orders' ? (
           <MyOrders orders={orders} offers={offers} />

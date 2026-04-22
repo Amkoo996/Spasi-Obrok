@@ -1,3 +1,12 @@
+export type UserRole = 'customer' | 'partner' | 'admin';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  role: UserRole;
+  points: number;
+}
+
 export type OfferCategory = 'bakery' | 'fast_food' | 'grocery' | 'restaurant';
 
 export interface Offer {

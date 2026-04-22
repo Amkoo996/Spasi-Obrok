@@ -69,6 +69,19 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
   };
 
   let filteredOffers = offers.filter(o => {
+    // Hide sold out
+    if (o.quantity <= 0) return false;
+
+    // Hide expired
+    if (o.pickupEnd) {
+      const now = new Date();
+      const [hours, minutes] = o.pickupEnd.split(':').map(Number);
+      const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+      if (now.getTime() > target.getTime()) {
+         return false;
+      }
+    }
+
     if (filterNoPork && !o.noPork) return false;
     if (filterVegan && !o.vegan) return false;
     if (filterPrice === 'under5' && o.price >= 5) return false;
@@ -246,8 +259,9 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
           </div>
         ))}
         {filteredOffers.length === 0 && (
-          <div className="text-center text-[#6b7264] py-10 md:col-span-2">
-            No offers match your filters.
+          <div className="text-center text-[#6b7264] py-20 md:col-span-2 bg-white rounded-[32px] border border-[#eceae0] shadow-sm">
+            <h3 className="text-xl font-bold text-[#1a1c18] mb-2">Trenutno nema ponuda — vraćamo se uskoro</h3>
+            <p className="text-sm">Partneri obično izbacuju ponude u popodnevnim satima. Pratite nas!</p>
           </div>
         )}
       </div>

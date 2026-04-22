@@ -193,6 +193,49 @@ export default function PartnerPanel({ offers, orders, onCreateOffer, onUpdateOr
         </form>
       </section>
 
+      {/* MY OFFERS */}
+      <section>
+        <h2 className="font-bold text-xl text-[#1a1c18] mb-4">Moje Ponude</h2>
+        {offers.length === 0 ? (
+          <div className="text-[#6b7264] py-8 text-center bg-white rounded-[32px] border border-dashed border-[#d1cfc0]">
+            Trenutno nemate aktivnih ponuda.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {offers.map(offer => {
+              let isExpired = false;
+              if (offer.pickupEnd) {
+                const now = new Date();
+                const [hours, minutes] = offer.pickupEnd.split(':').map(Number);
+                const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+                isExpired = now.getTime() > target.getTime();
+              }
+              const isSoldOut = offer.quantity <= 0;
+              const isActive = !isExpired && !isSoldOut;
+
+              return (
+                <div key={offer.id} className="bg-white p-5 rounded-[32px] shadow-sm border border-[#eceae0] flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-[#1a1c18]">{offer.title}</h3>
+                    <div className="flex gap-2 text-xs mt-1">
+                      <span className="text-[#6b7264]">Količina: {offer.quantity}</span>
+                      <span className="text-[#6b7264]">Ističe: {offer.pickupEnd}</span>
+                    </div>
+                  </div>
+                  <div>
+                     {isActive ? (
+                       <span className="bg-[#f0f4ef] text-[#4f6d44] text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full border border-[#4f6d44]/20">Aktivno</span>
+                     ) : (
+                       <span className="bg-red-50 text-red-700 text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full border border-red-200">Neaktivno</span>
+                     )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       {/* RESERVATIONS */}
       <section>
         <div className="flex items-center justify-between mb-4">
