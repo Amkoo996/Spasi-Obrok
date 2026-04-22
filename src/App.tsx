@@ -175,8 +175,13 @@ export default function App() {
              }
              setUserProfile(data);
           }
-        } catch (e) {
-          console.error("Error loading profile", e);
+        } catch (e: any) {
+          if (e?.message?.includes('offline')) {
+            console.warn("Skipping profile fetch. User offline or Firestore not ready.");
+            setUserProfile({ uid: u.uid, email: u.email || '', role: 'customer', points: 0 }); // optimistic fallback
+          } else {
+            console.warn("Warning loading profile:", e.message);
+          }
         }
       } else {
         setUserProfile(null);
@@ -193,34 +198,52 @@ export default function App() {
     
     // Seed initial offers if empty (mocking for dev scale)
     const seedInitial = async () => {
-      const snap = await getDoc(doc(db, 'system', 'seeded'));
-      if (!snap.exists()) {
-        for (const offer of INITIAL_OFFERS) {
-          await setDoc(doc(db, 'offers', offer.id), { ...offer, partnerId: 'admin', reservedCount: 0, pickedUpCount: 0, createdAt: new Date().toISOString() });
+      try {
+        const snap = await getDoc(doc(db, 'system', 'seeded'));
+        if (!snap.exists()) {
+          for (const offer of INITIAL_OFFERS) {
+            await setDoc(doc(db, 'offers', offer.id), { ...offer, partnerId: 'admin', reservedCount: 0, pickedUpCount: 0, createdAt: new Date().toISOString() });
+          }
+          await setDoc(doc(db, 'system', 'meta'), { lastOrderId: 0 });
+          await setDoc(doc(db, 'system', 'seeded'), { done: true });
         }
-        await setDoc(doc(db, 'system', 'meta'), { lastOrderId: 0 });
-        await setDoc(doc(db, 'system', 'seeded'), { done: true });
+      } catch (e: any) {
+        if (e?.message?.includes('offline')) {
+          console.warn("Firestore is offline or not yet initialized in the Firebase Console. Seeding skipped.");
+        } else {
+          console.error("Failed to seed initial data:", e);
+        }
       }
     };
     seedInitial();
 
-    const unsubOffers = onSnapshot(collection(db, 'offers'), (snap) => {
-      const loaded: Offer[] = [];
-      snap.forEach(d => loaded.push({ id: d.id, ...d.data() } as Offer));
-      setOffers(loaded);
-    });
-
+    let unsubOffers = () => {};
     let unsubOrders = () => {};
-    if (user) {
-      unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
-        const loaded: Order[] = [];
-        snap.forEach(d => loaded.push({ id: d.id, ...d.data() } as Order));
-        // Sort by latest
-        loaded.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setOrders(loaded);
+
+    try {
+      unsubOffers = onSnapshot(collection(db, 'offers'), (snap) => {
+        const loaded: Offer[] = [];
+        snap.forEach(d => loaded.push({ id: d.id, ...d.data() } as Offer));
+        setOffers(loaded);
+      }, (err) => {
+        console.warn("Failed to subscribe to offers:", err.message);
       });
-    } else {
-      setOrders([]);
+
+      if (user) {
+        unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
+          const loaded: Order[] = [];
+          snap.forEach(d => loaded.push({ id: d.id, ...d.data() } as Order));
+          // Sort by latest
+          loaded.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setOrders(loaded);
+        }, (err) => {
+           console.warn("Failed to subscribe to orders:", err.message);
+        });
+      } else {
+        setOrders([]);
+      }
+    } catch(e) {
+      console.warn("Firestore listener init failed:", e);
     }
 
     return () => {
