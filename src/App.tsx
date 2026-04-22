@@ -5,6 +5,8 @@ import CustomerFeed from './components/CustomerFeed';
 import PartnerPanel from './components/PartnerPanel';
 import MyOrders from './components/MyOrders';
 import Terms from './components/Terms';
+import { auth, db, loginWithGoogle } from './firebase';
+import { collection, onSnapshot, doc, setDoc, updateDoc, increment, getDoc, runTransaction } from 'firebase/firestore';
 
 const INITIAL_OFFERS: Offer[] = [
   {
@@ -142,23 +144,64 @@ const INITIAL_OFFERS: Offer[] = [
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   
-  const [offers, setOffers] = useState<Offer[]>(() => {
-    const saved = localStorage.getItem('offers');
-    return saved ? JSON.parse(saved) : INITIAL_OFFERS;
-  });
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('orders');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
-  const [orderCounter, setOrderCounter] = useState(() => {
-    const saved = localStorage.getItem('orderCounter');
-    return saved ? Number(saved) : 1;
-  });
+  const [orderCounter, setOrderCounter] = useState(1);
 
-  const [partnerAccess, setPartnerAccess] = useState(localStorage.getItem('isPartner') === 'true');
-  const [partnerPinInput, setPartnerPinInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(auth.currentUser);
+
+  // Initialize Firebase Auth
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  // Listen to Firestore
+  useEffect(() => {
+    if (loading) return;
+    
+    // Seed initial offers if empty (mocking for dev scale)
+    const seedInitial = async () => {
+      const snap = await getDoc(doc(db, 'system', 'seeded'));
+      if (!snap.exists()) {
+        for (const offer of INITIAL_OFFERS) {
+          await setDoc(doc(db, 'offers', offer.id), { ...offer, partnerId: 'admin', reservedCount: 0, pickedUpCount: 0, createdAt: new Date().toISOString() });
+        }
+        await setDoc(doc(db, 'system', 'meta'), { lastOrderId: 0 });
+        await setDoc(doc(db, 'system', 'seeded'), { done: true });
+      }
+    };
+    seedInitial();
+
+    const unsubOffers = onSnapshot(collection(db, 'offers'), (snap) => {
+      const loaded: Offer[] = [];
+      snap.forEach(d => loaded.push({ id: d.id, ...d.data() } as Offer));
+      setOffers(loaded);
+    });
+
+    let unsubOrders = () => {};
+    if (user) {
+      unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
+        const loaded: Order[] = [];
+        snap.forEach(d => loaded.push({ id: d.id, ...d.data() } as Order));
+        // Sort by latest
+        loaded.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setOrders(loaded);
+      });
+    } else {
+      setOrders([]);
+    }
+
+    return () => {
+      unsubOffers();
+      unsubOrders();
+    };
+  }, [loading, user]);
 
   // Setup basic router listener
   useEffect(() => {
@@ -170,134 +213,181 @@ export default function App() {
   const navigate = (path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
+    window.scrollTo(0,0);
   };
 
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem('offers', JSON.stringify(offers));
-  }, [offers]);
+  const handleReserve = async (offerId: string) => {
+    // Check locally first, then commit to firestore
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer || offer.quantity <= 0) return null;
 
-  useEffect(() => {
-    localStorage.setItem('orders', JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('orderCounter', orderCounter.toString());
-  }, [orderCounter]);
-
-  const handleReserve = (offerId: string) => {
-    const offerIndex = offers.findIndex(o => o.id === offerId);
-    if (offerIndex === -1 || offers[offerIndex].quantity <= 0) return null;
-
-    const myPhone = localStorage.getItem('userPhone');
-    if (!myPhone) {
-      alert("Greška sistema: Nije pronađen Vaš broj. Molimo osvježite stranicu i potvrdite broj telefona ponovo.");
-      return null;
+    if (!user) {
+      await loginWithGoogle();
+      if (!auth.currentUser) return null;
     }
 
-    // RULE 1: Max 2 Active Reservations
-    const myActiveOrders = orders.filter(o => o.userPhone === myPhone && o.status === 'reserved');
+    const myPhone = localStorage.getItem('userPhone') || 'Nepoznato';
+
+    const myActiveOrders = orders.filter(o => o.userId === auth.currentUser?.uid && o.status === 'reserved');
     if (myActiveOrders.length >= 2) {
       alert("Ne možete imati više od 2 aktivne rezervacije istovremeno.");
       return null;
     }
 
-    // RULE 2: No-show Penalties (2 no-shows in 24h = blocked)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const myRecentNoShows = orders.filter(o => o.userPhone === myPhone && o.status === 'no_show' && o.createdAt > twentyFourHoursAgo);
+    const myRecentNoShows = orders.filter(o => o.userId === auth.currentUser?.uid && o.status === 'no_show' && o.createdAt > twentyFourHoursAgo);
     
     if (myRecentNoShows.length >= 2) {
       alert("Vaš račun je privremeno blokiran (24h) zbog previše nepreuzetih narudžbi.");
       return null;
     }
 
-    const code = `SA-${orderCounter.toString().padStart(4, '0')}`;
-    setOrderCounter(c => c + 1);
-
-    const newOrder: Order = {
-      id: code,
-      offerId: offerId,
-      offerTitle: offers[offerIndex].title,
-      status: 'reserved',
-      createdAt: new Date().toISOString(),
-      userPhone: myPhone
-    };
-
-    setOrders(prev => [newOrder, ...prev]);
-    
-    setOffers(prev => {
-      const copy = [...prev];
-      copy[offerIndex] = { 
-        ...copy[offerIndex], 
-        quantity: copy[offerIndex].quantity - 1,
-        reservedCount: (copy[offerIndex].reservedCount || 0) + 1 
-      };
-      return copy;
-    });
-
-    return newOrder;
-  };
-
-  const handleCreateOffer = (newOffer: Omit<Offer, 'id' | 'distance'>) => {
-    const offer: Offer = {
-      ...newOffer,
-      id: `o-${Date.now()}`,
-      distance: Number((Math.random() * 3 + 0.1).toFixed(1)) // random distance for mock
-    };
-    setOffers(prev => [offer, ...prev]);
-  };
-
-  const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId && o.status !== status) {
+    try {
+      let orderCode = '';
+      
+      await runTransaction(db, async (t) => {
+        // READS MUST HAPPEN FIRST
+        const metaRef = doc(db, 'system', 'meta');
+        const offerRef = doc(db, 'offers', offerId);
         
-        // Handle Offer side-effects
-        if (status === 'picked_up') {
-          setOffers(offPrev => offPrev.map(offer => 
-            offer.id === o.offerId ? { ...offer, pickedUpCount: (offer.pickedUpCount || 0) + 1 } : offer
-          ));
-        } else if (status === 'no_show') {
-          // Restore Quantity
-          setOffers(offPrev => offPrev.map(offer => 
-            offer.id === o.offerId ? { ...offer, quantity: offer.quantity + 1 } : offer
-          ));
+        const metaDoc = await t.get(metaRef);
+        const offerDoc = await t.get(offerRef);
+        
+        let nextId = 1;
+        if (metaDoc.exists()) {
+          nextId = (metaDoc.data().lastOrderId || 0) + 1;
         }
+        
+        const currentQty = offerDoc.data()?.quantity || 0;
+        if (currentQty <= 0) throw new Error("SOLD_OUT");
 
-        return { 
-          ...o, 
-          status, 
-          ...(status === 'picked_up' ? { pickedUpAt: new Date().toISOString() } : {})
-        };
-      }
-      return o;
-    }));
+        // NOW ALL WRITES
+        orderCode = `SA-${nextId.toString().padStart(4, '0')}`;
+        
+        t.set(metaRef, { lastOrderId: nextId }, { merge: true });
+
+        t.update(offerRef, {
+          quantity: increment(-1),
+          reservedCount: increment(1)
+        });
+
+        const newOrderRef = doc(db, 'orders', orderCode);
+        t.set(newOrderRef, {
+          id: orderCode,
+          offerId: offerId,
+          offerTitle: offer.title,
+          status: 'reserved',
+          createdAt: new Date().toISOString(),
+          userPhone: myPhone,
+          userId: auth.currentUser?.uid,
+          partnerId: offer.partnerId || 'admin'
+        });
+      });
+
+      // return local copy to show visually right away
+      return {
+        id: orderCode,
+        offerId: offerId,
+        offerTitle: offer.title,
+        status: 'reserved',
+        createdAt: new Date().toISOString(),
+        userPhone: myPhone,
+        userId: auth.currentUser.uid,
+        partnerId: offer.partnerId || 'admin'
+      } as Order;
+
+    } catch (e) {
+      console.error(e);
+      alert("Nažalost, neko je bio brži! Paket je rezervisan.");
+      return null;
+    }
   };
+
+  const handleCreateOffer = async (newOffer: Omit<Offer, 'id' | 'distance'>) => {
+    const freshId = `o-${Date.now()}`;
+    await setDoc(doc(db, 'offers', freshId), {
+      ...newOffer,
+      partnerId: auth.currentUser?.uid || 'admin',
+      reservedCount: 0,
+      pickedUpCount: 0,
+      createdAt: new Date().toISOString()
+    });
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    // Find doc id for order (where id == SA-0000)
+    // Wait, order records their own ID as "id" but document ID could be random or same.
+    // Assuming doc ID is different than SA id, need to query... wait, let's just make the DOC ID = orderCode
+    // Earlier I did const orderRef = doc(collection(db, 'orders')); so it was random.
+    // Since we need to update by SA-code:
+    let realDocId = null;
+    orders.forEach(o => {
+      // In my previous step I merged d.id and ...d.data().
+      // Let's assume orderId is the SA- code, which we set to id.
+      // We actually need the document ID. Let's make myTransaction set the document id to the SA- code.
+      realDocId = orderId; 
+    });
+    
+    try {
+      if (status === 'picked_up') {
+        await updateDoc(doc(db, 'orders', orderId), {
+           status,
+           pickedUpAt: new Date().toISOString()
+        });
+        await updateDoc(doc(db, 'offers', order.offerId), {
+           pickedUpCount: increment(1)
+        });
+      } else if (status === 'no_show') {
+         await updateDoc(doc(db, 'orders', orderId), {
+           status
+        });
+        await updateDoc(doc(db, 'offers', order.offerId), {
+           quantity: increment(1)
+        });
+      }
+    } catch(e) {
+      console.error("Status error:", e);
+      alert("Neuspješno ažuriranje. Uvjerite se da ste povezani.");
+    }
+  };
+
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-[#2d312a] flex flex-col font-sans sm:mb-0 mb-16 pb-safe antialiased">
-      <header className="bg-white border-b border-[#eceae0] sticky top-0 z-30 shrink-0 px-4 sm:px-8 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-10 h-10 bg-[#4f6d44] rounded-xl flex items-center justify-center text-white text-xl">🍱</div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-[#22c55e]">SpasiObrok</h1>
-              <p className="text-[11px] text-[#6b7264] flex items-center gap-1 font-bold tracking-wide uppercase">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <header className="bg-white border-b border-[#eceae0] sticky top-0 z-30 shrink-0 px-4 sm:px-8 py-3 sm:py-4">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="flex items-center gap-3 cursor-pointer justify-center sm:justify-start w-full sm:w-auto" onClick={() => navigate('/')}>
+            <div className="w-10 h-10 bg-[#4f6d44] rounded-xl flex items-center justify-center text-white text-xl shadow-sm shrink-0">🍱</div>
+            <div className="flex flex-col">
+              <h1 className="text-2xl sm:text-xl font-black tracking-tight text-[#1a1c18] leading-none mb-1 sm:mb-0">Spasi<span className="text-[#4f6d44]">Obrok</span></h1>
+              <p className="text-[11px] text-[#6b7264] flex items-center gap-1 font-bold tracking-wide uppercase mt-0 sm:mt-0.5">
+                <svg className="w-3 h-3 text-[#4f6d44]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 Sarajevo, BiH
               </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-6 text-sm font-semibold">
              <button onClick={() => navigate('/')} className={`${currentPath === '/' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Deals</button>
-             <button onClick={() => navigate('/my-orders')} className={`${currentPath === '/my-orders' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Moje Rezervacije</button>
-             <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
+             {user ? (
+               <>
+                 <button onClick={() => navigate('/my-orders')} className={`${currentPath === '/my-orders' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Moje Rezervacije</button>
+                 <button onClick={() => navigate('/partner')} className={`${currentPath === '/partner' ? 'text-[#4f6d44] border-b-2 border-[#4f6d44] pb-1' : 'text-[#6b7264] hover:text-[#1a1c18]'}`}>Partner Panel</button>
+                 <button onClick={() => auth.signOut()} className="text-red-500 hover:text-red-700">Odjavi se</button>
+               </>
+             ) : (
+               <button onClick={loginWithGoogle} className="bg-[#4f6d44] text-white px-5 py-2 rounded-full hover:bg-[#3d5434] transition-colors">Prijavi se</button>
+             )}
           </div>
         </div>
       </header>
 
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 overflow-x-hidden">
         {currentPath === '/partner' ? (
-          partnerAccess ? (
+          user ? (
             <PartnerPanel 
               offers={offers} 
               orders={orders} 
@@ -308,25 +398,11 @@ export default function App() {
              <div className="bg-white p-8 rounded-[32px] border border-[#eceae0] shadow-sm max-w-sm mx-auto mt-20 text-center">
                <h2 className="text-xl font-bold mb-2">Partner Pristup</h2>
                <p className="text-sm text-[#6b7264] mb-6">Pristup rezervisan za restorane.</p>
-               <input 
-                 type="password" 
-                 placeholder="Unesi PIN (1234)" 
-                 value={partnerPinInput}
-                 onChange={e => setPartnerPinInput(e.target.value)}
-                 className="w-full bg-[#fbfaf7] border border-[#eceae0] rounded-xl px-4 py-3 mb-4 text-center text-3xl tracking-[1em] font-mono focus:outline-none focus:ring-2 focus:ring-[#4f6d44]"
-               />
                <button 
-                 onClick={() => {
-                   if(partnerPinInput === '1234') {
-                     localStorage.setItem('isPartner', 'true');
-                     setPartnerAccess(true);
-                   } else {
-                     alert('Pogrešan PIN');
-                   }
-                 }}
+                 onClick={loginWithGoogle}
                  className="w-full bg-[#4f6d44] text-white font-bold py-4 rounded-2xl shadow-sm hover:bg-[#3d5434] transition-colors"
                >
-                 Prijavi se
+                 Prijavi se sa Google nalogom
                </button>
              </div>
           )

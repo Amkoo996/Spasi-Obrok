@@ -15,6 +15,8 @@ export interface Offer {
   category: OfferCategory;
   reservedCount?: number;
   pickedUpCount?: number;
+  partnerId?: string;
+  createdAt?: string;
 }
 
 export type OrderStatus = 'reserved' | 'picked_up' | 'no_show';
@@ -27,4 +29,6 @@ export interface Order {
   createdAt: string;
   pickedUpAt?: string;
   userPhone?: string;
+  userId?: string;
+  partnerId?: string;
 }

@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Offer": {
+      "title": "Offer",
+      "description": "Represents a surplus food offer from a partner.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "valueEstimate": { "type": "number" },
+        "location": { "type": "string" },
+        "quantity": { "type": "number" },
+        "pickupEnd": { "type": "string" },
+        "noPork": { "type": "boolean" },
+        "vegan": { "type": "boolean" },
+        "category": { "type": "string" },
+        "partnerId": { "type": "string" },
+        "reservedCount": { "type": "number" },
+        "pickedUpCount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "price", "valueEstimate", "location", "quantity", "pickupEnd", "noPork", "vegan", "category", "partnerId", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Represents a customer reservation.",
+      "type": "object",
+      "properties": {
+        "offerId": { "type": "string" },
+        "offerTitle": { "type": "string" },
+        "status": { "type": "string", "enum": ["reserved", "picked_up", "no_show"] },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "partnerId": { "type": "string" },
+        "pickedUpAt": { "type": "string" }
+      },
+      "required": ["offerId", "offerTitle", "status", "createdAt", "userId", "partnerId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile or partner status.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["customer", "partner", "admin"] },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/offers/{offerId}": {
+      "schema": { "$ref": "#/entities/Offer" },
+      "description": "Collection of all food offers."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Collection of reservations."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User roles and details to identify partners."
+    }
+  }
+}

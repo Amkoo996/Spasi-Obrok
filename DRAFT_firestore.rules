@@ -1,0 +1,119 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    
+    function isAdmin() {
+      // Bootstrap Admin by email (change reddemption19@gmail.com)
+      return isSignedIn() && (request.auth.token.email == 'reddemption19@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isPartner() {
+      return isSignedIn() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'partner');
+    }
+
+    // Users
+    function isValidUser(data) {
+      return data.keys().size() >= 2 &&
+             data.role is string && data.role in ['customer', 'partner'] &&
+             data.createdAt is string;
+    }
+    
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Users can create their own profile but ONLY as 'customer'
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) &&
+                       isValidUser(incoming()) && incoming().role == 'customer' &&
+                       incoming().createdAt == request.time.toIsoString();
+      // Only admin can upgrade to partner
+      allow update: if isAdmin();
+    }
+
+    // Offers
+    function isValidOffer(data) {
+      return data.keys().hasAll(['title', 'price', 'valueEstimate', 'location', 'quantity', 'pickupEnd', 'noPork', 'vegan', 'category', 'partnerId', 'createdAt', 'reservedCount', 'pickedUpCount']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.valueEstimate is number && data.valueEstimate >= 0 &&
+             data.location is string && data.location.size() > 0 && data.location.size() <= 100 &&
+             data.quantity is number && data.quantity >= 0 &&
+             data.pickupEnd is string && data.pickupEnd.size() <= 10 &&
+             data.noPork is bool &&
+             data.vegan is bool &&
+             data.category is string && data.category in ['bakery', 'fast_food', 'grocery', 'restaurant'] &&
+             data.partnerId is string && data.partnerId == request.auth.uid &&
+             data.reservedCount is number && data.reservedCount >= 0 &&
+             data.pickedUpCount is number && data.pickedUpCount >= 0 &&
+             data.createdAt is string;
+    }
+
+    match /offers/{offerId} {
+      // Anyone signed in can read offers
+      allow read: if isSignedIn();
+      allow create: if isPartner() && isValidId(offerId) && isValidOffer(incoming());
+      
+      // Updates
+      allow update: if isSignedIn() && (
+        (isAdmin()) ||
+        // Partner update (e.g., editing offer, or picked_up count)
+        (isPartner() && existing().partnerId == request.auth.uid &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'reservedCount', 'pickedUpCount']) &&
+         incoming().quantity >= 0) ||
+        // Customer reservation (decreasing quantity, increasing reservedCount)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'reservedCount']) &&
+         incoming().quantity == existing().quantity - 1 &&
+         incoming().reservedCount == existing().reservedCount + 1 &&
+         existing().quantity > 0)
+      );
+    }
+
+    // Orders
+    function isValidOrder(data) {
+      return data.keys().hasAll(['offerId', 'offerTitle', 'status', 'createdAt', 'userId', 'partnerId']) &&
+             data.offerId is string && data.offerId.size() > 0 &&
+             data.offerTitle is string && data.offerTitle.size() <= 100 &&
+             data.status is string && data.status in ['reserved', 'picked_up', 'no_show'] &&
+             data.createdAt is string &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.partnerId is string && data.partnerId.size() > 0;
+    }
+
+    match /orders/{orderId} {
+      // Customer can read their orders, Partner can read orders for their partnerId
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.partnerId == request.auth.uid ||
+        isAdmin()
+      );
+
+      // Customer creating an order (reservation)
+      allow create: if isSignedIn() && isValidId(orderId) &&
+                       isValidOrder(incoming()) &&
+                         incoming().status == 'reserved' &&
+                         // ATOMICITY: Ensure the offer exists and has quantity
+                         get(/databases/$(database)/documents/offers/$(incoming().offerId)).data.quantity > 0;
+
+      // Update Order Status
+      allow update: if isSignedIn() && (
+        (isAdmin()) ||
+        (isPartner() && existing().partnerId == request.auth.uid &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'pickedUpAt']) &&
+         incoming().status in ['picked_up', 'no_show'] &&
+         existing().status == 'reserved')
+      );
+    }
+  }
+}

@@ -39,7 +39,7 @@ function CountdownTimer({ pickupEnd }: { pickupEnd: string }) {
 
 interface Props {
   offers: Offer[];
-  onReserve: (offerId: string) => Order | null;
+  onReserve: (offerId: string) => Promise<Order | null>;
   onNavigate: (path: string) => void;
 }
 
@@ -96,9 +96,9 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
     executeReservation();
   };
 
-  const executeReservation = () => {
+  const executeReservation = async () => {
     if (!selectedOffer) return;
-    const order = onReserve(selectedOffer.id);
+    const order = await onReserve(selectedOffer.id);
     if (order) {
       setSuccessOrder(order);
     }
@@ -230,8 +230,8 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
                   <p className="text-xs text-[#b45309] font-bold flex items-center gap-1 bg-[#fef3c7]/20 px-2 py-0.5 rounded-md inline-flex mb-1">
                     <Clock size={12}/> Ističe za: <CountdownTimer pickupEnd={offer.pickupEnd} />
                   </p>
-                  <p className="text-2xl font-black text-[#1a1c18] mt-1">
-                    {offer.price} KM <span className="text-sm font-normal text-[#6b7264] line-through">~{offer.valueEstimate} KM</span>
+                  <p className="text-2xl font-black text-[#1a1c18] mt-1 flex items-baseline gap-2">
+                    {offer.price} KM <span className="text-sm font-bold text-[#b45309] bg-[#fef3c7] px-2 py-0.5 rounded-md">Umjesto {offer.valueEstimate} KM</span>
                   </p>
                 </div>
                 <button 
@@ -283,7 +283,7 @@ export default function CustomerFeed({ offers, onReserve, onNavigate }: Props) {
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-black text-[#1a1c18]">{selectedOffer.price} KM</div>
-                  <div className="text-sm text-[#6b7264] line-through">~{selectedOffer.valueEstimate} KM</div>
+                  <div className="text-sm text-[#b45309] font-bold mt-1">Ušteda {selectedOffer.valueEstimate - selectedOffer.price} KM</div>
                 </div>
               </div>
 
